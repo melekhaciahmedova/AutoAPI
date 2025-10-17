@@ -74,7 +74,6 @@ public class DockerService
         var outputBuilder = new System.Text.StringBuilder();
         var errorBuilder = new System.Text.StringBuilder();
 
-        // Komutu parçala (Örn: "docker exec autoapi-builder..." -> file="docker", args="exec autoapi-builder...")
         var parts = command.Split(' ', 2);
         var file = parts[0];
         var args = parts.Length > 1 ? parts[1] : "";
@@ -92,12 +91,12 @@ public class DockerService
             }
         };
 
-        // Asenkron çıktıyı yakalama
         process.OutputDataReceived += (s, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
                 outputBuilder.AppendLine(e.Data);
         };
+
         process.ErrorDataReceived += (s, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
@@ -110,29 +109,18 @@ public class DockerService
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            // Sürecin bitmesini bekleyin
             await process.WaitForExitAsync();
 
-            // ✅ KESİN GÜNCELLEME 3: Çıktı akışlarının kapanmasını bekleyin
-            // Output/Error akışları asenkron olduğu için, process kapansa bile
-            // son olaylar henüz gelmemiş olabilir.
-            process.WaitForExit();
+            await Task.Delay(200); // 🩵 Flush beklemesi
 
-            // Asenkron çıktıyı yakalamak için kısa bir bekleme ekle (Senkronizasyonu garantilemek için)
-            await Task.Delay(100);
-
-            // Asenkron akışları durdur
-            process.CancelOutputRead();
-            process.CancelErrorRead();
-
-            return (process.ExitCode, outputBuilder.ToString(), errorBuilder.ToString());
+            return (process.ExitCode, outputBuilder.ToString().Trim(), errorBuilder.ToString().Trim());
         }
         catch (Exception ex)
         {
-            // ... (hata yakalama)
             return (-1, "", ex.ToString());
         }
     }
+
 
     /// <summary>
     /// Builder container içinde migration'ı detached modda çalıştırır.
