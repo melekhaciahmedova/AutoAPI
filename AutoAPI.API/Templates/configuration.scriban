@@ -1,0 +1,29 @@
+﻿using AutoAPI.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AutoAPI.Data.Infrastructure.Configurations
+{
+    public class {{ class_name }}Configuration : IEntityTypeConfiguration<{{ class_name }}>
+    {
+        public void Configure(EntityTypeBuilder<{{ class_name }}> builder)
+        {   
+            {{~ key_found = false ~}}
+            {{~ for prop in properties ~}}
+                {{~ if prop.isKey ~}}
+            builder.HasKey(x => x.{{ prop.name }});
+                    {{~ key_found = true ~}}
+                    {{~ break ~}}
+                {{~ end ~}}
+            {{~ end ~}}
+
+            {{~ if !key_found ~}}
+            builder.HasKey(x => x.Id);
+            {{~ end ~}}
+
+            {{~ for prop in properties ~}}
+            builder.Property(x => x.{{ prop.name }}){{~ if prop.columnType }}.HasColumnType("{{ prop.columnType }}"){{~ end ~}}{{~ if prop.maxLength }}.HasMaxLength({{ prop.maxLength }}){{~ end ~}}{{~ if prop.isKey ~}}.IsRequired(){{~ else if prop.isRequired ~}}.IsRequired(){{~ else if prop.isNullable ~}}.IsRequired(false){{~ end ~}};
+            {{~ end ~}}
+        }
+    }
+}

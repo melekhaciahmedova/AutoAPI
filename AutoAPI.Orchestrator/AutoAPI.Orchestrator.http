@@ -1,0 +1,6 @@
+@AutoAPI.Orchestrator_HostAddress = http://localhost:5113
+
+GET {{AutoAPI.Orchestrator_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

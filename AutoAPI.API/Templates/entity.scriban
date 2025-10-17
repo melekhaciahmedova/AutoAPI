@@ -1,0 +1,9 @@
+﻿namespace AutoAPI.Domain.Entities
+{
+    public class {{ class_name }}
+    {
+    {{~ for prop in properties ~}}
+        public {{ prop.clr_type }} {{ prop.name }} { get; set; }
+    {{~ end ~}}
+    }
+}

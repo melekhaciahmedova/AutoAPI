@@ -1,0 +1,50 @@
+services:
+  autoapi-api:
+    container_name: autoapi-api
+    build:
+      context: .
+      dockerfile: AutoAPI.API/Dockerfile
+    ports:
+      - "5222:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ORCHESTRATOR_URL=http://autoapi-orchestrator:8080/api/orchestrator/trigger
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/src
+    depends_on:
+      - autoapi-orchestrator
+    networks:
+      - autoapi-net
+
+  autoapi-orchestrator:
+    container_name: autoapi-orchestrator
+    build:
+      context: .
+      dockerfile: AutoAPI.Orchestrator/Dockerfile
+    ports:
+      - "5113:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - BUILDER_CONTAINER_NAME=autoapi-builder
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/src
+    depends_on:
+      - autoapi-builder
+    networks:
+      - autoapi-net
+
+  autoapi-builder:
+    container_name: autoapi-builder
+    build:
+      context: .
+      dockerfile: AutoAPI.Builder/Dockerfile
+    volumes:
+      - .:/src
+    networks:
+      - autoapi-net
+
+networks:
+  autoapi-net:
+    driver: bridge
