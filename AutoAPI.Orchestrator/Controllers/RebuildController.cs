@@ -19,32 +19,31 @@ public class RebuildController : ControllerBase
     [HttpPost("api")]
     public async Task<IActionResult> RebuildApi()
     {
-        _logger.LogInformation("♻️ AutoAPI rebuild (Compose) işlemi başlatıldı...");
+        _logger.LogInformation("♻️ AutoAPI rebuild işlemi başlatıldı...");
 
         string composePath = "/src";
         string serviceName = "autoapi-api";
-
         var steps = new List<object>();
 
-        // 1️⃣ DOWN (only api)
-        var downCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" down {serviceName}";
-        var down = await _docker.RunCommandAsync(downCmd);
-        steps.Add(new { step = "down", down.exitCode, down.output, down.error });
+        // 1️⃣ Container'ı zorla sil
+        var rmCmd = $"docker rm -f {serviceName}";
+        var rm = await _docker.RunCommandAsync(rmCmd);
+        steps.Add(new { step = "remove", rm.exitCode, rm.output, rm.error });
 
-        // 2️⃣ BUILD
+        // 2️⃣ Servisi yeniden build et
         var buildCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" build {serviceName}";
         var build = await _docker.RunCommandAsync(buildCmd);
         steps.Add(new { step = "build", build.exitCode, build.output, build.error });
 
-        // 3️⃣ UP
+        // 3️⃣ Servisi yeniden ayağa kaldır
         var upCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" up -d --no-deps {serviceName}";
         var up = await _docker.RunCommandAsync(upCmd);
         steps.Add(new { step = "up", up.exitCode, up.output, up.error });
 
-        // ❌ Hata varsa
-        if (down.exitCode != 0 || build.exitCode != 0 || up.exitCode != 0)
+        // ❌ Hata kontrolü
+        if (rm.exitCode != 0 || build.exitCode != 0 || up.exitCode != 0)
         {
-            _logger.LogError("❌ API rebuild başarısız!");
+            _logger.LogError("❌ API rebuild sırasında hata oluştu.");
             return StatusCode(500, new
             {
                 message = "❌ API rebuild failed.",
@@ -52,7 +51,7 @@ public class RebuildController : ControllerBase
             });
         }
 
-        _logger.LogInformation("✅ API rebuild tamamlandı!");
+        _logger.LogInformation("✅ AutoAPI rebuild başarıyla tamamlandı!");
         return Ok(new
         {
             message = "✅ API rebuild completed successfully.",
