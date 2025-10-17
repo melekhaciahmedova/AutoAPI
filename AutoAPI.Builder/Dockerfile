@@ -1,46 +1,23 @@
 ﻿# ===========================
-# 1️⃣ Build aşaması
+# AutoAPI.Builder — tek aşamalı SDK imajı
 # ===========================
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# Tüm projeleri container'a kopyala
+WORKDIR /src
 COPY . .
 
-# Builder projesine geç
-WORKDIR "/src/AutoAPI.Builder"
+# EF CLI kurulumu (global)
+RUN dotnet tool install --global dotnet-ef --version 8.*
+ENV PATH="$PATH:/root/.dotnet/tools"
 
-# Restore ve build işlemleri
+WORKDIR "/src/AutoAPI.Builder"
 RUN dotnet restore
 RUN dotnet publish -c Release -o /app/publish
 
-# ===========================
-# 2️⃣ Runtime aşaması
-# ===========================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
+COPY --from=0 /src/AutoAPI.Builder/appsettings.json ./
 
-# 🔧 Docker CLI erişimi için gerekli paketler
-RUN apt-get update && \
-    apt-get install -y ca-certificates curl gnupg lsb-release && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-      https://download.docker.com/linux/debian \
-      $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && \
-    apt-get install -y docker-ce-cli && \
-    rm -rf /var/lib/apt/lists/*
+# Kaynak kodları da içeri al (EF için .csproj erişimi)
+COPY . /src
 
-# ✅ Derlenmiş dosyaları kopyala
-COPY --from=build /app/publish .
-
-# ✅ Kaynak kodları da kopyala (dotnet ef için .csproj erişimi)
-COPY . /app/src
-
-# ===========================
-# 3️⃣ Çalışma dizini ve giriş noktası
-# ===========================
-WORKDIR /app
-ENTRYPOINT ["dotnet", "AutoAPI.Builder.dll"]
+ENTRYPOINT ["dotnet", "/app/publish/AutoAPI.Builder.dll"]
