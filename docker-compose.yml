@@ -8,11 +8,7 @@ services:
       - "5222:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ORCHESTRATOR_URL=http://autoapi-orchestrator:8080/api/orchestrator/trigger
     volumes:
-      # 🔹 Host Docker daemon’a erişim
-      - /var/run/docker.sock:/var/run/docker.sock
-      # 🔹 Kodları mount et ki rebuild sırasında kaynaklar erişilebilir olsun
       - .:/src
     depends_on:
       - autoapi-orchestrator
@@ -28,7 +24,6 @@ services:
       - "5113:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - BUILDER_CONTAINER_NAME=autoapi-builder
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/src
@@ -44,7 +39,6 @@ services:
       dockerfile: AutoAPI.Builder/Dockerfile
     volumes:
       - .:/src
-      - /var/run/docker.sock:/var/run/docker.sock   # 🔹 Bunu da ekle (migration veya docker işlemleri için)
     networks:
       - autoapi-net
 
