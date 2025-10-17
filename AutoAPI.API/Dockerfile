@@ -1,6 +1,15 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+﻿# ============ BUILD STAGE ============
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY . .
+WORKDIR "/src/AutoAPI.API"
+RUN dotnet restore
+RUN dotnet publish -c Release -o /app/publish
 
-# 🔹 Docker CLI yükle
+# ============ RUNTIME STAGE ============
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
+# 🔹 Docker CLI yükle (Rebuild için gerekli)
 RUN apt-get update && \
     apt-get install -y ca-certificates curl gnupg lsb-release && \
     mkdir -p /etc/apt/keyrings && \
