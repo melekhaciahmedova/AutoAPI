@@ -5,54 +5,57 @@ namespace AutoAPI.Orchestrator.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class RebuildController(DockerService docker, ILogger<RebuildController> logger) : ControllerBase
+public class RebuildController : ControllerBase
 {
-    private readonly DockerService _docker = docker;
-    private readonly ILogger<RebuildController> _logger = logger;
+    private readonly DockerService _docker;
+    private readonly ILogger<RebuildController> _logger;
+
+    public RebuildController(DockerService docker, ILogger<RebuildController> logger)
+    {
+        _docker = docker;
+        _logger = logger;
+    }
 
     [HttpPost("api")]
     public async Task<IActionResult> RebuildApi()
     {
-        _logger.LogInformation("♻️ AutoAPI rebuild işlemi başlatıldı...");
+        _logger.LogInformation("♻️ AutoAPI rebuild işlemi (Compose tabanlı) başlatıldı...");
 
         string composePath = "/src";
         string serviceName = "autoapi-api";
-        string imageName = $"src-{serviceName}";
+        var steps = new List<(string step, int exitCode, string output, string error)>();
 
-        var steps = new List<(string step, int code, string output, string error)>();
+        // 1️⃣ Down only the API container
+        var downCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" down {serviceName}";
+        var down = await _docker.RunCommandAsync(downCmd);
+        steps.Add(("down", down.exitCode, down.output, down.error));
 
-        // 1️⃣ Stop container (if exists)
-        var stopCheck = await _docker.RunCommandAsync($"docker ps -q -f name={serviceName}");
-        if (!string.IsNullOrWhiteSpace(stopCheck.output))
-            steps.Add(("stop", (await _docker.RunCommandAsync($"docker stop {serviceName}")).exitCode,
-                stopCheck.output, stopCheck.error));
-        else
-            steps.Add(("stop", 0, "Container not running", ""));
+        // 2️⃣ Build the API container
+        var buildCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" build {serviceName}";
+        var build = await _docker.RunCommandAsync(buildCmd);
+        steps.Add(("build", build.exitCode, build.output, build.error));
 
-        // 2️⃣ Remove old container (if exists)
-        var rmCheck = await _docker.RunCommandAsync($"docker ps -aq -f name={serviceName}");
-        if (!string.IsNullOrWhiteSpace(rmCheck.output))
-            steps.Add(("remove", (await _docker.RunCommandAsync($"docker rm -f {serviceName}")).exitCode,
-                rmCheck.output, rmCheck.error));
-        else
-            steps.Add(("remove", 0, "No old container to remove", ""));
+        // 3️⃣ Bring the API container up (without affecting others)
+        var upCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" up -d --no-deps {serviceName}";
+        var up = await _docker.RunCommandAsync(upCmd);
+        steps.Add(("up", up.exitCode, up.output, up.error));
 
-        // 3️⃣ Build image
-        var buildResult = await _docker.RunCommandAsync($"docker compose -f \"{composePath}/docker-compose.yml\" build {serviceName}");
-        steps.Add(("build", buildResult.exitCode, buildResult.output, buildResult.error));
+        // ❌ Error Handling
+        if (steps.Any(s => s.exitCode != 0))
+        {
+            _logger.LogError("❌ Rebuild sırasında hata oluştu.");
+            return StatusCode(500, new
+            {
+                message = "❌ API rebuild failed.",
+                steps
+            });
+        }
 
-        if (buildResult.exitCode != 0)
-            return StatusCode(500, new { message = "❌ Build aşaması başarısız!", steps });
-
-        // 4️⃣ Run container manually (only autoapi-api)
-        var runCmd = $"docker run -d --name {serviceName} --network autoapi-net -p 5222:8080 {imageName}";
-        var runResult = await _docker.RunCommandAsync(runCmd);
-        steps.Add(("run", runResult.exitCode, runResult.output, runResult.error));
-
-        if (runResult.exitCode != 0)
-            return StatusCode(500, new { message = "❌ Container başlatma başarısız!", steps });
-
-        _logger.LogInformation("✅ API rebuild başarıyla tamamlandı!");
-        return Ok(new { message = "✅ API rebuild completed successfully.", steps });
+        _logger.LogInformation("✅ AutoAPI rebuild başarıyla tamamlandı!");
+        return Ok(new
+        {
+            message = "✅ API rebuild completed successfully.",
+            steps
+        });
     }
 }
