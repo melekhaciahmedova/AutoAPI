@@ -33,8 +33,6 @@ services:
     build:
       context: .
       dockerfile: AutoAPI.Builder/Dockerfile
-    volumes:
-      - .:/src
     networks:
       - autoapi-net
 
