@@ -15,24 +15,25 @@ public class RebuildController(DockerService docker, ILogger<RebuildController> 
     {
         _logger.LogInformation("♻️ API rebuild request received...");
 
-        var composePath = "/src"; // container içindeki docker-compose.yml yolu
-        var serviceName = "autoapi-api";
-
+        var composePath = "/src";
         var steps = new List<DockerStepResult>();
 
         try
         {
-            // 1️⃣ Build (image yeniden oluştur)
+            // 1️⃣ Yeni imaj oluştur
             var build = await _docker.RunCommandAsync(
-                $"docker compose -f \"{composePath}/docker-compose.yml\" build {serviceName}");
+                $"docker build -t autoapi-api -f {composePath}/AutoAPI.API/Dockerfile {composePath}");
             steps.Add(new DockerStepResult(build.exitCode, build.output, build.error));
 
-            // 2️⃣ Up (container'ı yeniden başlat)
-            var up = await _docker.RunCommandAsync(
-                $"docker compose -f \"{composePath}/docker-compose.yml\" up -d {serviceName}");
-            steps.Add(new DockerStepResult(up.exitCode, up.output, up.error));
+            // 2️⃣ Eski konteyneri sil
+            var rm = await _docker.RunCommandAsync("docker rm -f autoapi-api");
+            steps.Add(new DockerStepResult(rm.exitCode, rm.output, rm.error));
 
-            // 🔍 Hata kontrolü
+            // 3️⃣ Yeni konteyneri ayağa kaldır
+            var run = await _docker.RunCommandAsync(
+                "docker run -d --name autoapi-api --network autoapi-net -p 5222:8080 autoapi-api");
+            steps.Add(new DockerStepResult(run.exitCode, run.output, run.error));
+
             var anyError = steps.Any(s => s.ExitCode != 0);
             if (anyError)
             {
@@ -51,7 +52,4 @@ public class RebuildController(DockerService docker, ILogger<RebuildController> 
     }
 }
 
-/// <summary>
-/// Her adımın sonuç çıktısı için model
-/// </summary>
 public record DockerStepResult(int ExitCode, string Output, string Error);

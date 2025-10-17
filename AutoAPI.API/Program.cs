@@ -42,7 +42,6 @@ builder.WebHost.UseUrls("http://0.0.0.0:8080"); // Container içi 8080'de dinle
 Console.WriteLine($"🏗️  Environment: {builder.Environment.EnvironmentName}");
 Console.WriteLine($"🌍 Running in container: {Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")}");
 
-
 var app = builder.Build();
 
 app.UseSwagger(c =>
