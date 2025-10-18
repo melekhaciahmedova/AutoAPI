@@ -1,15 +1,9 @@
-﻿# --------------------------------------------------------
-# AutoAPI Builder (Rebuild Container)
-# Bu container, .NET SDK içerir ve sürekli açık kalır.
-# --------------------------------------------------------
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0
+# Bash kabuğu kullanalım (Debian tabanlı SDK image’ta var)
+SHELL ["/bin/bash", "-c"]
 
-# Çalışma dizini
 WORKDIR /src
 
-# Host’taki tüm dosyaları paylaşmaya gerek yok, sadece mount edilir.
-# (COPY . .) gerekmez, çünkü docker-compose volume zaten /src'ye mount edecek.
-
-# Container’ın sürekli açık kalması için:
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+# Container’ın daima açık kalması için
+ENTRYPOINT ["bash", "-c", "echo '🛠 Builder container is running with .NET SDK ready...'; while true; do sleep 3600; done"]
