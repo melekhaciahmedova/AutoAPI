@@ -1,16 +1,12 @@
-﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+﻿# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+COPY . .
+RUN dotnet restore "AutoAPI.API.csproj"
+RUN dotnet publish "AutoAPI.API.csproj" -c Release -o /app/publish
 
-COPY AutoAPI.sln ./
-COPY AutoAPI.Core/ AutoAPI.Core/
-COPY AutoAPI.Domain/ AutoAPI.Domain/
-COPY AutoAPI.Data/ AutoAPI.Data/
-COPY AutoAPI.API/ AutoAPI.API/
-RUN dotnet restore AutoAPI.API/AutoAPI.API.csproj
-RUN dotnet publish AutoAPI.API/AutoAPI.API.csproj -c Release -o /app/publish
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-ENV ASPNETCORE_ENVIRONMENT=Development
 ENTRYPOINT ["dotnet", "AutoAPI.API.dll"]
