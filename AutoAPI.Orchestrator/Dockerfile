@@ -1,13 +1,15 @@
-﻿# --------------------------------------------------
-# AutoAPI.Builder Dockerfile
-# Rebuild komutları için SDK tabanlı container
-# --------------------------------------------------
+﻿# --------------------------------------------------------
+# AutoAPI Builder (Rebuild Container)
+# Bu container, .NET SDK içerir ve sürekli açık kalır.
+# --------------------------------------------------------
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+# Çalışma dizini
 WORKDIR /src
 
-# Kaynak kodu paylaş (host'tan gelecek)
-COPY . .
+# Host’taki tüm dosyaları paylaşmaya gerek yok, sadece mount edilir.
+# (COPY . .) gerekmez, çünkü docker-compose volume zaten /src'ye mount edecek.
 
-# Container sürekli açık kalsın (rebuild için)
-CMD ["/bin/bash", "-c", "echo '🛠 Builder container is running (SDK ready)'; tail -f /dev/null"]
+# Container’ın sürekli açık kalması için:
+ENTRYPOINT ["tail", "-f", "/dev/null"]
