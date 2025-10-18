@@ -1,6 +1,4 @@
-﻿# ============================
-# 1️⃣ BUILD STAGE
-# ============================
+﻿
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 ENV PATH="$PATH:/root/.dotnet/tools"
@@ -11,7 +9,7 @@ WORKDIR /src
 # EF CLI kur (global)
 RUN dotnet tool install --global dotnet-ef --version 8.*
 
-# Çözüm ve projeleri kopyala
+# Tüm projeleri kopyala
 COPY AutoAPI.sln ./
 COPY AutoAPI.Core/ AutoAPI.Core/
 COPY AutoAPI.Domain/ AutoAPI.Domain/
@@ -20,23 +18,21 @@ COPY AutoAPI.Builder/ AutoAPI.Builder/
 COPY AutoAPI.API/ AutoAPI.API/
 COPY AutoAPI.Orchestrator/ AutoAPI.Orchestrator/
 
-# Tüm çözümü restore et
+# Restore işlemi
 RUN dotnet restore AutoAPI.sln
 
-# Builder projesini build et
+# Builder projesini derle ve publish et
 WORKDIR /src/AutoAPI.Builder
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet build -c Release
+RUN dotnet publish AutoAPI.Builder.csproj -c Release -o /out
 
-# ============================
-# 2️⃣ RUNTIME STAGE
-# ============================
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
 WORKDIR /app
 
-# EF Tool klasörünü build'ten kopyala
+# EF tool klasörünü ve build çıktısını kopyala
 COPY --from=build /root/.dotnet /root/.dotnet
-COPY --from=build /app/publish .
+COPY --from=build /out .
 
 # Ortam değişkenleri
 ENV PATH="$PATH:/root/.dotnet/tools"
