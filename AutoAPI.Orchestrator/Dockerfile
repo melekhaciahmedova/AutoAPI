@@ -11,12 +11,8 @@ COPY AutoAPI.Domain/ AutoAPI.Domain/
 RUN dotnet restore "AutoAPI.Orchestrator/AutoAPI.Orchestrator.csproj"
 RUN dotnet publish "AutoAPI.Orchestrator/AutoAPI.Orchestrator.csproj" -c Release -o /app/publish
 
-# -----------------------------------------
-# Runtime aşaması (Docker CLI eklendi)
-# -----------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
-# Docker CLI yükleme
 RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
     install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \

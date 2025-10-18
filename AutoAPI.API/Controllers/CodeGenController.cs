@@ -48,31 +48,60 @@ namespace AutoAPI.API.Controllers
         // ============================================================
         // 2️⃣ Entity kontrol etme
         // ============================================================
+
         [HttpGet("check")]
         public IActionResult CheckEntity([FromQuery] string entityName)
         {
             try
             {
-                var solutionRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
-                var domainAssemblyPath = Path.Combine(solutionRoot, "AutoAPI.Domain", "bin", "Debug", "net8.0", "AutoAPI.Domain.dll");
+                // 1️⃣ Uygulamanın kök dizinini tespit et
+                var baseDir = AppContext.BaseDirectory;
+                var possiblePaths = new[]
+                {
+            // Production container (publish output)
+            Path.Combine(baseDir, "AutoAPI.Domain.dll"),
+            // Local build (bin/Debug/net8.0)
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "AutoAPI.Domain", "bin", "Debug", "net8.0", "AutoAPI.Domain.dll")),
+            // Local build (bin/Release/net8.0)
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "AutoAPI.Domain", "bin", "Release", "net8.0", "AutoAPI.Domain.dll")),
+            // Volume mount (if running under /src)
+            "/src/AutoAPI.Domain/bin/Debug/net8.0/AutoAPI.Domain.dll",
+            "/src/AutoAPI.Domain/bin/Release/net8.0/AutoAPI.Domain.dll",
+            // Publish output under /app
+            "/app/AutoAPI.Domain.dll"
+        };
 
-                if (!System.IO.File.Exists(domainAssemblyPath))
-                    return NotFound($"❌ Domain assembly bulunamadı: {domainAssemblyPath}");
+                string domainAssemblyPath = possiblePaths.FirstOrDefault(System.IO.File.Exists)
+                    ?? throw new FileNotFoundException("AutoAPI.Domain.dll bulunamadı. Derlenmiş dosya mevcut değil.");
 
                 var assembly = Assembly.LoadFrom(domainAssemblyPath);
                 var entityType = assembly.GetType($"AutoAPI.Domain.Entities.{entityName}");
 
                 if (entityType != null)
-                    return Ok($"✅ '{entityName}' sınıfı bulundu: {entityType.FullName}");
+                    return Ok(new
+                    {
+                        message = $"✅ '{entityName}' sınıfı bulundu.",
+                        fullName = entityType.FullName,
+                        location = domainAssemblyPath
+                    });
                 else
-                    return NotFound($"❌ '{entityName}' sınıfı bulunamadı (derlenmemiş veya namespace hatalı).");
+                    return NotFound(new
+                    {
+                        message = $"❌ '{entityName}' sınıfı bulunamadı (derlenmemiş veya namespace hatalı).",
+                        searchedIn = domainAssemblyPath
+                    });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Entity kontrol hatası");
-                return StatusCode(500, $"🔥 Kontrol sırasında hata oluştu: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    message = "🔥 Kontrol sırasında hata oluştu",
+                    error = ex.Message
+                });
             }
         }
+
 
         // ============================================================
         // 3️⃣ Migration tetikleme (Orchestrator üzerinden)
