@@ -5,48 +5,48 @@ namespace AutoAPI.Orchestrator.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class RebuildController : ControllerBase
+public class RebuildController(DockerService docker, ILogger<RebuildController> logger) : ControllerBase
 {
-    private readonly DockerService _docker;
-    private readonly ILogger<RebuildController> _logger;
-
-    public RebuildController(DockerService docker, ILogger<RebuildController> logger)
-    {
-        _docker = docker;
-        _logger = logger;
-    }
+    private readonly DockerService _docker = docker;
+    private readonly ILogger<RebuildController> _logger = logger;
 
     [HttpPost("api")]
     public async Task<IActionResult> RebuildApi()
     {
         _logger.LogInformation("♻️ AutoAPI rebuild işlemi başlatıldı...");
 
-        string composePath = "/src";
-        string serviceName = "autoapi-api";
         var steps = new List<object>();
 
-        // 1️⃣ Container'ı zorla sil
-        var rmCmd = $"docker rm -f {serviceName}";
-        var rm = await _docker.RunCommandAsync(rmCmd);
-        steps.Add(new { step = "remove", rm.exitCode, rm.output, rm.error });
+        const string builderContainer = "autoapi-builder";
+        const string apiContainer = "autoapi-api";
 
-        // 2️⃣ Servisi yeniden build et
-        var buildCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" build {serviceName}";
+        // 1️⃣ Builder konteynerinde publish işlemini yap
+        var buildCmd =
+            $"docker exec {builderContainer} bash -c 'cd /src/AutoAPI.API && dotnet restore && dotnet publish -c Release -o /src/AutoAPI.API/bin/Release/net8.0/publish'";
         var build = await _docker.RunCommandAsync(buildCmd);
-        steps.Add(new { step = "build", build.exitCode, build.output, build.error });
+        steps.Add(new { step = "dotnet publish", build.exitCode, build.output, build.error });
 
-        // 3️⃣ Servisi yeniden ayağa kaldır
-        var upCmd = $"docker compose -f \"{composePath}/docker-compose.yml\" up -d --no-deps {serviceName}";
-        var up = await _docker.RunCommandAsync(upCmd);
-        steps.Add(new { step = "up", up.exitCode, up.output, up.error });
-
-        // ❌ Hata kontrolü
-        if (rm.exitCode != 0 || build.exitCode != 0 || up.exitCode != 0)
+        if (build.exitCode != 0)
         {
-            _logger.LogError("❌ API rebuild sırasında hata oluştu.");
+            _logger.LogError("❌ Build hatası oluştu: {Error}", build.error);
             return StatusCode(500, new
             {
-                message = "❌ API rebuild failed.",
+                message = "❌ Build failed.",
+                steps
+            });
+        }
+
+        // 2️⃣ API konteynerini yeniden başlat
+        var restartCmd = $"docker restart {apiContainer}";
+        var restart = await _docker.RunCommandAsync(restartCmd);
+        steps.Add(new { step = "restart", restart.exitCode, restart.output, restart.error });
+
+        if (restart.exitCode != 0)
+        {
+            _logger.LogError("❌ API yeniden başlatılamadı: {Error}", restart.error);
+            return StatusCode(500, new
+            {
+                message = "❌ API restart failed.",
                 steps
             });
         }
