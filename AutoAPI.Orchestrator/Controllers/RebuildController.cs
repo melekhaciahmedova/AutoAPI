@@ -59,4 +59,58 @@ public class RebuildController(DockerService docker, ILogger<RebuildController> 
             steps
         });
     }
+
+    [HttpPost("migrate")]
+    public async Task<IActionResult> RunMigrations()
+    {
+        _logger.LogInformation("⚙️ Migration işlemi başlatıldı...");
+
+        var steps = new List<object>();
+        string builderContainer = "autoapi-builder";
+
+        try
+        {
+            // 1️⃣ Migration adı (timestamp ile benzersiz)
+            string migrationName = $"AutoMigration_{DateTime.UtcNow:yyyyMMdd_HHmmss}";
+            string projectPath = "/src/AutoAPI.Data"; // 📦 EF Core DbContext bu projede
+
+            // 2️⃣ Migration oluştur
+            var addMigrationCmd =
+                $"docker exec {builderContainer} sh -lc \"cd {projectPath} && dotnet ef migrations add {migrationName} --startup-project ../AutoAPI.API/AutoAPI.API.csproj\"";
+
+            var addResult = await _docker.RunCommandAsync(addMigrationCmd);
+            steps.Add(new { step = "add-migration", addResult.exitCode, addResult.output, addResult.error });
+
+            if (addResult.exitCode != 0)
+                throw new Exception($"Migration oluşturulamadı: {addResult.error}");
+
+            // 3️⃣ Database update
+            var updateCmd =
+                $"docker exec {builderContainer} sh -lc \"cd {projectPath} && dotnet ef database update --startup-project ../AutoAPI.API/AutoAPI.API.csproj\"";
+
+            var updateResult = await _docker.RunCommandAsync(updateCmd);
+            steps.Add(new { step = "update-database", updateResult.exitCode, updateResult.output, updateResult.error });
+
+            if (updateResult.exitCode != 0)
+                throw new Exception($"Database update başarısız: {updateResult.error}");
+
+            _logger.LogInformation("✅ Migration işlemi başarıyla tamamlandı!");
+            return Ok(new
+            {
+                message = "✅ Migration ve Database update işlemi tamamlandı.",
+                migrationName,
+                steps
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Migration sırasında hata oluştu.");
+            return StatusCode(500, new
+            {
+                message = "❌ Migration işlemi başarısız.",
+                error = ex.Message,
+                steps
+            });
+        }
+    }
 }
