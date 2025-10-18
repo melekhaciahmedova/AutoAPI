@@ -45,31 +45,18 @@ namespace AutoAPI.API.Controllers
             return Ok($"{definition.ClassName} successfully generated!");
         }
 
-        // ============================================================
-        // 2️⃣ Entity kontrol etme
-        // ============================================================
-
         [HttpGet("check")]
         public IActionResult CheckEntity([FromQuery] string entityName)
         {
             try
             {
-                // 1️⃣ Uygulamanın kök dizinini tespit et
-                var baseDir = AppContext.BaseDirectory;
                 var possiblePaths = new[]
                 {
-            // Production container (publish output)
-            Path.Combine(baseDir, "AutoAPI.Domain.dll"),
-            // Local build (bin/Debug/net8.0)
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "AutoAPI.Domain", "bin", "Debug", "net8.0", "AutoAPI.Domain.dll")),
-            // Local build (bin/Release/net8.0)
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "AutoAPI.Domain", "bin", "Release", "net8.0", "AutoAPI.Domain.dll")),
-            // Volume mount (if running under /src)
-            "/src/AutoAPI.Domain/bin/Debug/net8.0/AutoAPI.Domain.dll",
-            "/src/AutoAPI.Domain/bin/Release/net8.0/AutoAPI.Domain.dll",
-            // Publish output under /app
-            "/app/AutoAPI.Domain.dll"
-        };
+                    "/src/AutoAPI.Domain/bin/Release/net8.0/AutoAPI.Domain.dll",
+                    "/src/AutoAPI.Domain/bin/Debug/net8.0/AutoAPI.Domain.dll",
+                    Path.Combine(AppContext.BaseDirectory, "AutoAPI.Domain.dll"),
+                    "/app/AutoAPI.Domain.dll"
+                };
 
                 string domainAssemblyPath = possiblePaths.FirstOrDefault(System.IO.File.Exists)
                     ?? throw new FileNotFoundException("AutoAPI.Domain.dll bulunamadı. Derlenmiş dosya mevcut değil.");
