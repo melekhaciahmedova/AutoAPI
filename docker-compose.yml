@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   autoapi-api:
     container_name: autoapi-api
@@ -10,8 +8,6 @@ services:
       - "5222:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    volumes:
-      - .:/src
     networks:
       - autoapi-net
 
@@ -22,10 +18,6 @@ services:
       dockerfile: AutoAPI.Builder/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - PATH=/root/.dotnet/tools:$PATH
-    volumes:
-      - .:/src
-    working_dir: /src
     networks:
       - autoapi-net
 
@@ -38,8 +30,6 @@ services:
       - "5113:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    volumes:
-      - .:/src
     networks:
       - autoapi-net
 
