@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   autoapi-api:
     container_name: autoapi-api
@@ -13,6 +15,20 @@ services:
     networks:
       - autoapi-net
 
+  autoapi-builder:
+    container_name: autoapi-builder
+    build:
+      context: /home/sama/AutoAPI
+      dockerfile: AutoAPI.Builder/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - PATH=/root/.dotnet/tools:$PATH
+    volumes:
+      - /home/sama/AutoAPI:/src
+    working_dir: /src
+    networks:
+      - autoapi-net
+
   autoapi-orchestrator:
     container_name: autoapi-orchestrator
     build:
@@ -25,19 +41,6 @@ services:
     volumes:
       - /home/sama/AutoAPI:/src
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - autoapi-net
-
-  autoapi-builder:
-    container_name: autoapi-builder
-    build:
-      context: /home/sama/AutoAPI
-      dockerfile: AutoAPI.Builder/Dockerfile
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-    volumes:
-      - /home/sama/AutoAPI:/src
-    working_dir: /src
     networks:
       - autoapi-net
 
