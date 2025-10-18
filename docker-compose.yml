@@ -37,6 +37,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
       - .:/src
+    working_dir: /src
     networks:
       - autoapi-net
 
