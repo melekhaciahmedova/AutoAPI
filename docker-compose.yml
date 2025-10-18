@@ -9,7 +9,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
-      - .:/src                 # paylaşılan volume
+      - .:/src
     networks:
       - autoapi-net
 
@@ -23,7 +23,7 @@ services:
       - PATH=/root/.dotnet/tools:$PATH
     working_dir: /src
     volumes:
-      - .:/src                 # kaynak kodu tüm konteynerlerle paylaş
+      - .:/src
     networks:
       - autoapi-net
 
@@ -37,7 +37,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
-      - .:/src                 # orchestrator da rebuild komutlarını çalıştırır
+      - .:/src
     networks:
       - autoapi-net
 
