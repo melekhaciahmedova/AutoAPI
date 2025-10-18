@@ -22,7 +22,7 @@ public class RebuildController(DockerService docker, ILogger<RebuildController> 
 
         // 1️⃣ Builder konteynerinde publish işlemini yap
         var buildCmd =
-    $"docker exec {builderContainer} sh -c \"cd /src/AutoAPI.API && dotnet restore && dotnet publish -c Release -o /src/AutoAPI.API/bin/Release/net8.0/publish\"";
+    $"docker exec {builderContainer} sh -c \"cd /src && dotnet publish AutoAPI.sln -c Release -o /src/out\"";
 
         var build = await _docker.RunCommandAsync(buildCmd);
         steps.Add(new { step = "dotnet publish", build.exitCode, build.output, build.error });
