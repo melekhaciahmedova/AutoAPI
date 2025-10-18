@@ -3,6 +3,7 @@ using AutoAPI.API.Services.Generation;
 using AutoAPI.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Reflection;
+using System.Runtime.Loader;
 
 namespace AutoAPI.API.Controllers
 {
@@ -45,54 +46,59 @@ namespace AutoAPI.API.Controllers
             return Ok($"{definition.ClassName} successfully generated!");
         }
 
-        [HttpGet("check")]
-        public IActionResult CheckEntity([FromQuery] string entityName)
+
+[HttpGet("check")]
+    public IActionResult CheckEntity([FromQuery] string entityName)
+    {
+        try
         {
-            try
+            var possiblePaths = new[]
             {
-                var possiblePaths = new[]
-                {
-                    "/src/AutoAPI.Domain/bin/Release/net8.0/AutoAPI.Domain.dll",
-                    "/src/AutoAPI.Domain/bin/Debug/net8.0/AutoAPI.Domain.dll",
-                    Path.Combine(AppContext.BaseDirectory, "AutoAPI.Domain.dll"),
-                    "/app/AutoAPI.Domain.dll"
-                };
+            "/src/AutoAPI.Domain/bin/Release/net8.0/AutoAPI.Domain.dll",
+            "/src/AutoAPI.Domain/bin/Debug/net8.0/AutoAPI.Domain.dll",
+            Path.Combine(AppContext.BaseDirectory, "AutoAPI.Domain.dll"),
+            "/app/AutoAPI.Domain.dll"
+        };
 
-                string domainAssemblyPath = possiblePaths.FirstOrDefault(System.IO.File.Exists)
-                    ?? throw new FileNotFoundException("AutoAPI.Domain.dll bulunamadı. Derlenmiş dosya mevcut değil.");
+            string domainAssemblyPath = possiblePaths.FirstOrDefault(System.IO.File.Exists)
+                ?? throw new FileNotFoundException("AutoAPI.Domain.dll bulunamadı. Derlenmiş dosya mevcut değil.");
 
-                var assembly = Assembly.LoadFrom(domainAssemblyPath);
-                var entityType = assembly.GetType($"AutoAPI.Domain.Entities.{entityName}");
+            // ✅ İzole context kullan
+            var context = new AssemblyLoadContext(Guid.NewGuid().ToString(), isCollectible: true);
+            var assembly = context.LoadFromAssemblyPath(domainAssemblyPath);
+            var entityType = assembly.GetType($"AutoAPI.Domain.Entities.{entityName}");
 
-                if (entityType != null)
-                    return Ok(new
-                    {
-                        message = $"✅ '{entityName}' sınıfı bulundu.",
-                        fullName = entityType.FullName,
-                        location = domainAssemblyPath
-                    });
-                else
-                    return NotFound(new
-                    {
-                        message = $"❌ '{entityName}' sınıfı bulunamadı (derlenmemiş veya namespace hatalı).",
-                        searchedIn = domainAssemblyPath
-                    });
-            }
-            catch (Exception ex)
+            if (entityType != null)
             {
-                _logger.LogError(ex, "Entity kontrol hatası");
-                return StatusCode(500, new
+                return Ok(new
                 {
-                    message = "🔥 Kontrol sırasında hata oluştu",
-                    error = ex.Message
+                    message = $"✅ '{entityName}' sınıfı bulundu.",
+                    fullName = entityType.FullName,
+                    location = domainAssemblyPath
                 });
             }
-        }
 
-        // ============================================================
-        // 3️⃣ Migration tetikleme (Orchestrator üzerinden)
-        // ============================================================
-        [HttpPost("migrate")]
+            return NotFound(new
+            {
+                message = $"❌ '{entityName}' sınıfı bulunamadı (derlenmemiş veya namespace hatalı).",
+                searchedIn = domainAssemblyPath
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Entity kontrol hatası");
+            return StatusCode(500, new
+            {
+                message = "🔥 Kontrol sırasında hata oluştu",
+                error = ex.Message
+            });
+        }
+    }
+
+    // ============================================================
+    // 3️⃣ Migration tetikleme (Orchestrator üzerinden)
+    // ============================================================
+    [HttpPost("migrate")]
         public async Task<IActionResult> MigrateAsync()
         {
             var orchestratorUrl =
