@@ -20,9 +20,5 @@ RUN dotnet publish -c Release -o /app/publish
 
 # 5️⃣ Çalışma dizinini değiştir
 WORKDIR /app
-
-# 6️⃣ EF CLI’nin .csproj dosyalarına erişebilmesi için kaynak kodları da içeri al
-COPY . /src
-
 # 7️⃣ Worker servisi başlat
 ENTRYPOINT ["dotnet", "/app/publish/AutoAPI.Builder.dll"]
