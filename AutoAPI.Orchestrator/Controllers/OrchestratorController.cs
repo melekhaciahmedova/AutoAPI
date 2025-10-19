@@ -9,6 +9,9 @@ namespace AutoAPI.Orchestrator.Controllers
     {
         private readonly ILogger<OrchestratorController> _logger;
         private readonly string _composeFile = "/src/docker-compose.yml";
+        private const string EF_PATH_FIX_PREFIX = "sh -c \"PATH=/root/.dotnet/tools:$PATH ";
+        private const string EF_PATH_FIX_SUFFIX = "\"";
+
 
         public OrchestratorController(ILogger<OrchestratorController> logger)
         {
@@ -28,6 +31,7 @@ namespace AutoAPI.Orchestrator.Controllers
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = "/bin/bash",
+                        // sh -c'yi çalıştırmak için Arguments'ı kullanıyoruz
                         Arguments = $"-c \"{command}\"",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -67,20 +71,20 @@ namespace AutoAPI.Orchestrator.Controllers
             if (upBuilder.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Builder start failed.", steps });
 
-            // 4️⃣ Run EF migrations add
+            // 4️⃣ Run EF migrations add (PATH FIX UYGULANDI)
             var migrationAdd = await RunCommand("ef-migrations-add",
-                $"docker exec autoapi-builder dotnet ef migrations add {name} " +
+                $"docker exec autoapi-builder {EF_PATH_FIX_PREFIX} dotnet ef migrations add {name} " +
                 $"-p /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                $"-s /src/AutoAPI.API/AutoAPI.API.csproj");
+                $"-s /src/AutoAPI.API/AutoAPI.API.csproj{EF_PATH_FIX_SUFFIX}");
 
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
-            // 5️⃣ Apply migrations to database
+            // 5️⃣ Apply migrations to database (PATH FIX UYGULANDI)
             var migrationUpdate = await RunCommand("ef-database-update",
-                $"docker exec autoapi-builder dotnet ef database update " +
+                $"docker exec autoapi-builder {EF_PATH_FIX_PREFIX} dotnet ef database update " +
                 $"-p /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                $"-s /src/AutoAPI.API/AutoAPI.API.csproj");
+                $"-s /src/AutoAPI.API/AutoAPI.API.csproj{EF_PATH_FIX_SUFFIX}");
 
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
