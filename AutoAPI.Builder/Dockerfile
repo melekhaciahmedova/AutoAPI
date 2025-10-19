@@ -2,13 +2,14 @@
 
 WORKDIR /src
 
-# PATH'i önce ekle
-ENV PATH="$PATH:/root/.dotnet/tools"
+# PATH'i en başta ekle (hem build-time hem runtime için)
+ENV PATH="/root/.dotnet/tools:${PATH}"
 
-# Sonra EF CLI'yı yükle
+# EF CLI yükle
 RUN dotnet tool install --global dotnet-ef
 
-# Test amaçlı sürümü yazdır (artık görünür)
-RUN dotnet ef --version
+# Doğrulama
+RUN /root/.dotnet/tools/dotnet-ef --version
 
-CMD ["sh", "-c", "echo '🛠 autoapi-builder ready (with EF CLI)...'; while true; do sleep 3600; done"]
+# Container'ı sürekli açık tut
+CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (with EF CLI)...'; while true; do sleep 3600; done"]
