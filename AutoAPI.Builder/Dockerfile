@@ -2,14 +2,13 @@
 
 WORKDIR /src
 
-# PATH'i en başta ekle (hem build-time hem runtime için)
+# PATH'i ekle
 ENV PATH="/root/.dotnet/tools:${PATH}"
 
-# EF CLI yükle
-RUN dotnet tool install --global dotnet-ef
+# EF CLI'yı .NET 8 ile uyumlu sürümde yükle
+RUN dotnet tool install --global dotnet-ef --version 8.*
 
-# Doğrulama
+# Doğrudan binary test et
 RUN /root/.dotnet/tools/dotnet-ef --version
 
-# Container'ı sürekli açık tut
-CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (with EF CLI)...'; while true; do sleep 3600; done"]
+CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (with EF 8.x)...'; while true; do sleep 3600; done"]
