@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   autoapi-builder:
     container_name: autoapi-builder
