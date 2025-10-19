@@ -2,7 +2,7 @@ services:
   autoapi-builder:
     container_name: autoapi-builder
     build:
-      context: /home/sama/AutoAPI
+      context: /src
       dockerfile: AutoAPI.Builder/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
