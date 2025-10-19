@@ -1,14 +1,16 @@
+version: "3.9"
+
 services:
   autoapi-builder:
     container_name: autoapi-builder
     build:
-      context: .
+      context: /home/sama/AutoAPI
       dockerfile: AutoAPI.Builder/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     working_dir: /src
     volumes:
-      - .:/src
+      - /home/sama/AutoAPI:/src
     networks:
       - autoapi-net
     restart: unless-stopped
@@ -16,31 +18,33 @@ services:
   autoapi-api:
     container_name: autoapi-api
     build:
-      context: .
+      context: /home/sama/AutoAPI
       dockerfile: AutoAPI.API/Dockerfile
     ports:
       - "5222:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
-      - .:/src
+      - /home/sama/AutoAPI:/src
     networks:
       - autoapi-net
+    restart: unless-stopped
 
   autoapi-orchestrator:
     container_name: autoapi-orchestrator
     build:
-      context: .
+      context: /home/sama/AutoAPI
       dockerfile: AutoAPI.Orchestrator/Dockerfile
     ports:
       - "5113:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
-      - .:/src
+      - /home/sama/AutoAPI:/src
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - autoapi-net
+    restart: unless-stopped
 
 networks:
   autoapi-net:
