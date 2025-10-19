@@ -2,19 +2,19 @@
 
 WORKDIR /src
 
-# Dotnet global tools path ve CLI home'u tanımla
-ENV PATH="/root/.dotnet/tools:${PATH}"
+# Global tool'ların görünmesi için ortam değişkenleri
 ENV DOTNET_ROOT="/usr/share/dotnet"
 ENV DOTNET_CLI_HOME="/root"
+ENV PATH="/root/.dotnet/tools:/usr/share/dotnet:${PATH}"
 
-# Eski tool klasörünü sıfırla
+# Temiz kurulum
 RUN rm -rf /root/.dotnet && mkdir -p /root/.dotnet/tools
 
-# EF Core CLI yükle (NET 8 uyumlu sürüm)
+# EF Core CLI'yı .NET 8 sürümüyle uyumlu şekilde yükle
 RUN dotnet tool install --global dotnet-ef --version 8.*
 
-# CLI'nın gerçekten çalıştığını doğrula
-RUN /root/.dotnet/tools/dotnet-ef --version
+# PATH'in doğru çalıştığını test et
+RUN echo $PATH && /root/.dotnet/tools/dotnet-ef --version
 
-# Login shell ortamında başlat (ENV değişkenleri aktif olsun)
-CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (with EF 8.x)...'; while true; do sleep 3600; done"]
+# Login shell yerine normal shell ile başlat (PATH bozulmasın)
+CMD ["sh", "-c", "echo '🛠 autoapi-builder ready (EF 8.x installed, PATH fixed)'; while true; do sleep 3600; done"]
