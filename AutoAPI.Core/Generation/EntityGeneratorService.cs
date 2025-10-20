@@ -16,7 +16,7 @@ public class EntityGeneratorService
         _outputPath = Path.Combine(basePath, "AutoAPI.Domain", "Entities");
 
         Directory.CreateDirectory(_outputPath);
-        Console.WriteLine($"📂 Entity output path: {_outputPath}");
+        Console.WriteLine($"Entity output path: {_outputPath}");
     }
 
     public async Task GenerateEntitiesAsync(IEnumerable<ClassDefinition> classes)
@@ -38,7 +38,7 @@ public class EntityGeneratorService
             var filePath = Path.Combine(_outputPath, $"{cls.ClassName}.cs");
 
             await File.WriteAllTextAsync(filePath, code);
-            Console.WriteLine($"✅ Entity created: {filePath}");
+            Console.WriteLine($"Entity created: {filePath}");
         }
     }
 }

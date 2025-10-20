@@ -6,12 +6,14 @@ public class FluentApiGeneratorService
 {
     private readonly ITemplateRenderer _renderer;
     private readonly string _outputPath;
+
     public FluentApiGeneratorService(ITemplateRenderer renderer, string projectRoot)
     {
         _renderer = renderer;
-        var solutionDirectory = Directory.GetParent(projectRoot)?.FullName;
-        _outputPath = Path.Combine(solutionDirectory, "AutoAPI.Data", "Infrastructure", "Configurations");
+        var basePath = Directory.Exists("/src") ? "/src" : projectRoot;
+        _outputPath = Path.Combine(basePath, "AutoAPI.Data", "Infrastructure", "Configurations");
         Directory.CreateDirectory(_outputPath);
+        Console.WriteLine($"Fluent API output path: {_outputPath}");
     }
 
     public async Task GenerateFluentConfigurationsAsync(IEnumerable<ClassDefinition> classes)
@@ -35,6 +37,7 @@ public class FluentApiGeneratorService
             var code = await _renderer.RenderAsync("configuration.scriban", model);
             var filePath = Path.Combine(_outputPath, $"{cls.ClassName}EntityConfiguration.cs");
             await File.WriteAllTextAsync(filePath, code);
+            Console.WriteLine($"Fluent API configuration created: {filePath}");
         }
     }
 }

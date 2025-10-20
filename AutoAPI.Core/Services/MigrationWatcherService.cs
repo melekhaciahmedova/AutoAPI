@@ -19,7 +19,6 @@ public class MigrationWatcherService : BackgroundService
     {
         _logger = logger;
 
-        // ✅ Container içinde /src dizinini, localde ise klasik relative path'i kullan
         _solutionRoot = Directory.Exists("/src")
             ? "/src"
             : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));

@@ -31,13 +31,8 @@ builder.Services.AddSingleton<MigrationWatcherService>();
 
 builder.Services.AddHttpClient();
 
-builder.Services.AddScoped(provider =>
-    new MigrationGeneratorService(provider.GetRequiredService<IWebHostEnvironment>().ContentRootPath)
-);
+builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
-builder.WebHost.UseUrls("http://0.0.0.0:8080"); // Container içi 8080'de dinle
-
-// Log environment
 Console.WriteLine($"🏗️  Environment: {builder.Environment.EnvironmentName}");
 Console.WriteLine($"🌍 Running in container: {Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")}");
 

@@ -136,63 +136,6 @@ namespace AutoAPI.API.Controllers
             }
         }
 
-        [HttpGet("check-dbcontext")]
-        public IActionResult CheckDbContext()
-        {
-            try
-            {
-                // Aranabilecek olası derlenmiş AutoAPI.Data.dll yolları
-                var possiblePaths = new[]
-                {
-                    "/src/AutoAPI.Data/bin/Release/net8.0/AutoAPI.Data.dll",
-                    "/src/AutoAPI.Data/bin/Debug/net8.0/AutoAPI.Data.dll",
-                    Path.Combine(AppContext.BaseDirectory, "AutoAPI.Data.dll"),
-                    "/app/AutoAPI.Data.dll"
-                };
-
-                string dataAssemblyPath = possiblePaths.FirstOrDefault(System.IO.File.Exists)
-                    ?? throw new FileNotFoundException("AutoAPI.Data.dll bulunamadı. Derlenmiş dosya mevcut değil.");
-
-                // İzole context'te yükle
-                var context = new AssemblyLoadContext(Guid.NewGuid().ToString(), isCollectible: true);
-                var assembly = context.LoadFromAssemblyPath(dataAssemblyPath);
-
-                // AppDbContext türünü bul
-                var dbContextType = assembly.GetType("AutoAPI.Data.Infrastructure.AppDbContext");
-
-                if (dbContextType != null)
-                {
-                    // ✅ AppDbContext bulundu
-                    return Ok(new
-                    {
-                        message = "✅ AppDbContext başarıyla bulundu.",
-                        fullName = dbContextType.FullName,
-                        assembly = dataAssemblyPath,
-                        properties = dbContextType.GetProperties().Select(p => new
-                        {
-                            p.Name,
-                            PropertyType = p.PropertyType.Name
-                        }).ToList()
-                    });
-                }
-
-                // ❌ Bulunamadıysa detay ver
-                return NotFound(new
-                {
-                    message = "❌ AppDbContext sınıfı bulunamadı (derlenmemiş, namespace hatalı veya eksik).",
-                    searchedIn = dataAssemblyPath
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "AppDbContext kontrol hatası");
-                return StatusCode(500, new
-                {
-                    message = "🔥 AppDbContext kontrolü sırasında hata oluştu.",
-                    error = ex.Message
-                });
-            }
-        }
 
         [HttpPost("migrate")]
         public async Task<IActionResult> MigrateAsync()

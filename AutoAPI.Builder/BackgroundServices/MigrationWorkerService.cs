@@ -6,7 +6,6 @@ public class MigrationWorkerService(
     ILogger<MigrationWorkerService> logger,
     MigrationWatcherService watcher) : BackgroundService
 {
-    // Worker servisi boş çalışmaya devam eder (dosya izleme için)
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Builder migration watcher running...");
@@ -16,11 +15,8 @@ public class MigrationWorkerService(
         }
     }
 
-    // ✅ GÜNCELLEME: RunMigration metodunu async Task döndürecek şekilde değiştirin.
-    // Artık Program.cs bu metodu await edecek.
     public async Task RunMigrationAsync()
     {
-        // NOT: MigrationWatcherService'teki metodun adını TriggerManualMigrationAsync olarak değiştirin.
         await watcher.TriggerManualMigrationAsync();
     }
 }
