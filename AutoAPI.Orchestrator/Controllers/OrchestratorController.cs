@@ -42,32 +42,36 @@ namespace AutoAPI.Orchestrator.Controllers
                 else
                     _logger.LogError($"❌ [{stepName}] ExitCode={exitCode}");
 
-                _logger.LogWarning($"⚠️ [{stepName}] Error:\n{error}");
+                if (!string.IsNullOrWhiteSpace(error))
+                    _logger.LogWarning($"⚠️ [{stepName}] Error:\n{error}");
+
                 steps.Add(new { step = stepName, exitCode, output, error });
                 return (exitCode, output, error);
             }
 
-            // 1️⃣ EF tool’u kontrol et
+            // 1️⃣ EF tool kontrol
             var ensureEfTool = await RunCommand("ensure-ef-tool",
-                $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
+                $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && export PATH=$PATH:/src/tools && " +
+                $"if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
             if (ensureEfTool.exitCode != 0)
                 return StatusCode(500, new { message = "❌ EF tool install failed.", steps });
 
             // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
             var migrationAdd = await RunCommand("ef-migrations-add",
-    $"docker exec -w /src autoapi-builder bash -c \"{EF_TOOL_PATH} migrations add {migrationName} " +
-    "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-    "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
-    "--output-dir Migrations\"");
-
+                $"docker exec -w /src/AutoAPI.Data autoapi-builder bash -c \"{EF_TOOL_PATH} migrations add {migrationName} " +
+                "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
+                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
+                "--output-dir Migrations --force\"");
 
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
             // 3️⃣ Database update
             var migrationUpdate = await RunCommand("ef-database-update",
-    $"docker exec -w /src autoapi-builder bash -c '{EF_TOOL_PATH} database update --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj'");
+                $"docker exec -w /src/AutoAPI.Data autoapi-builder bash -c \"{EF_TOOL_PATH} database update " +
+                "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
+                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj\"");
 
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
