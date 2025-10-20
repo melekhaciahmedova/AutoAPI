@@ -13,14 +13,17 @@ public class AppDbContextGeneratorService
     {
         _renderer = renderer;
 
-        var solutionDirectory = Directory.GetParent(projectRoot)?.FullName
-             ?? throw new InvalidOperationException("Solution directory not found.");
+        // KRİTİK DÜZELTME: EntityGeneratorService'deki başarılı mantığı kullan.
+        // Bu, hem Docker (/src) hem de yerel ortamı (projectRoot) kapsar.
+        var solutionRootPath = Directory.Exists("/src") ? "/src" :
+            Directory.GetParent(projectRoot)?.FullName
+                ?? throw new InvalidOperationException("Solution directory not found.");
 
-        // 1️⃣ DÜZELTME: DbContext dosyasının yolu doğru olmalı
-        _contextFilePath = Path.Combine(solutionDirectory, "AutoAPI.Data", "Infrastructure", "AppDbContext.cs");
+        // 1️⃣ DÜZELTME: DbContext dosyasının yolu
+        _contextFilePath = Path.Combine(solutionRootPath, "AutoAPI.Data", "Infrastructure", "AppDbContext.cs");
 
-        // 2️⃣ YENİ: Entity'leri okumak için Domain projesinin yolunu oluştur.
-        _entitiesDirectoryPath = Path.Combine(solutionDirectory, "AutoAPI.Domain", "Entities");
+        // 2️⃣ DÜZELTME: Entity'leri okumak için Domain projesinin yolu
+        _entitiesDirectoryPath = Path.Combine(solutionRootPath, "AutoAPI.Domain", "Entities");
     }
 
     public async Task GenerateAppDbContextAsync(List<ClassDefinition> definitions)
