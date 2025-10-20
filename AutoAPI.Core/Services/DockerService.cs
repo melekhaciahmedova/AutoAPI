@@ -1,11 +1,16 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Text;
 
 namespace AutoAPI.Core.Services;
+
 public class DockerService
 {
     private readonly ILogger<DockerService> _logger;
     private string _dockerCmd = "docker compose";
+    private const string BUILDER_CONTAINER = "autoapi-builder";
+    private const string EF_TOOL_PATH = "/src/tools/dotnet-ef";
+
     public DockerService(ILogger<DockerService> logger)
     {
         _logger = logger;
@@ -41,61 +46,36 @@ public class DockerService
         }
     }
 
-    public async Task<bool> RebuildApiAsync(string composePath, string serviceName = "autoapi-api")
-    {
-        try
-        {
-            _logger.LogInformation("API container rebuild işlemi başlatıldı...");
-
-            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}\\docker-compose.yml\" stop {serviceName}");
-            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}\\docker-compose.yml\" rm -f {serviceName}");
-            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}\\docker-compose.yml\" build {serviceName}");
-            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}\\docker-compose.yml\" up -d {serviceName}");
-
-            _logger.LogInformation("API container başarıyla yeniden oluşturuldu.");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "API rebuild işlemi başarısız oldu.");
-            return false;
-        }
-    }
-
     /// <summary>
-    /// Docker komutlarını çalıştırmak için ortak method.
+    /// Docker komutlarını (veya sistem komutlarını) çalıştırmak için ortak method.
     /// </summary>
-    // AutoAPI.Core/Services/DockerService.cs
-
     public async Task<(int exitCode, string output, string error)> RunCommandAsync(string command)
     {
-        var outputBuilder = new System.Text.StringBuilder();
-        var errorBuilder = new System.Text.StringBuilder();
+        _logger.LogInformation("▶️ Executing: {Command}", command);
 
-        var parts = command.Split(' ', 2);
-        var file = parts[0];
-        var args = parts.Length > 1 ? parts[1] : "";
+        var outputBuilder = new StringBuilder();
+        var errorBuilder = new StringBuilder();
 
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = file,
-                Arguments = args,
+                FileName = "/bin/bash",
+                Arguments = $"-c \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true,
+                CreateNoWindow = true
             }
         };
 
-        process.OutputDataReceived += (s, e) =>
+        process.OutputDataReceived += (_, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
                 outputBuilder.AppendLine(e.Data);
         };
 
-        process.ErrorDataReceived += (s, e) =>
+        process.ErrorDataReceived += (_, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
                 errorBuilder.AppendLine(e.Data);
@@ -108,38 +88,83 @@ public class DockerService
             process.BeginErrorReadLine();
 
             await process.WaitForExitAsync();
+            await Task.Delay(150);
 
-            await Task.Delay(200); // 🩵 Flush beklemesi
+            var output = outputBuilder.ToString().Trim();
+            var error = errorBuilder.ToString().Trim();
 
-            return (process.ExitCode, outputBuilder.ToString().Trim(), errorBuilder.ToString().Trim());
+            if (process.ExitCode == 0)
+                _logger.LogInformation("✅ Command succeeded");
+            else
+                _logger.LogError("❌ Command failed ({ExitCode})", process.ExitCode);
+
+            if (!string.IsNullOrEmpty(error))
+                _logger.LogWarning("⚠️ STDERR:\n{Error}", error);
+
+            return (process.ExitCode, output, error);
         }
         catch (Exception ex)
         {
-            return (-1, "", ex.ToString());
+            _logger.LogError(ex, "🚨 Komut çalıştırılamadı");
+            return (-1, "", ex.Message);
         }
     }
 
+    /// <summary>
+    /// Builder container içinde EF Core komutu çalıştırır (örn. migrations add, database update).
+    /// </summary>
+    public async Task<(int exitCode, string output, string error)> RunEfCommandAsync(string title, string efArgs)
+    {
+        string command =
+            $"docker exec {BUILDER_CONTAINER} bash -c 'ASPNETCORE_ENVIRONMENT=Development " +
+            $"{EF_TOOL_PATH} {efArgs}'";
+
+        _logger.LogInformation("🧩 [{Step}] EF Command: {Command}", title, command);
+        return await RunCommandAsync(command);
+    }
 
     /// <summary>
-    /// Builder container içinde migration'ı detached modda çalıştırır.
+    /// API servisini yeniden derler ve ayağa kaldırır.
     /// </summary>
+    public async Task<bool> RebuildApiAsync(string composePath, string serviceName = "autoapi-api")
+    {
+        try
+        {
+            _logger.LogInformation("🔁 API container rebuild işlemi başlatıldı...");
 
+            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}/docker-compose.yml\" stop {serviceName}");
+            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}/docker-compose.yml\" rm -f {serviceName}");
+            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}/docker-compose.yml\" build {serviceName}");
+            await RunCommandAsync($"{_dockerCmd} -f \"{composePath}/docker-compose.yml\" up -d {serviceName}");
+
+            _logger.LogInformation("✅ API container başarıyla yeniden oluşturuldu.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "API rebuild işlemi başarısız oldu.");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Builder container içinde migration’ı trigger eder.
+    /// </summary>
     public async Task TriggerBuilderMigrationAsync()
     {
-        const string builderContainerName = "autoapi-builder";
         const string cmd = "dotnet /app/AutoAPI.Builder.dll migrate";
-        const string command = $"docker exec {builderContainerName} {cmd}";
+        const string command = $"docker exec {BUILDER_CONTAINER} {cmd}";
 
-        _logger.LogInformation(">> Executing: {Command}", command);
+        _logger.LogInformation("🚀 Triggering builder migration: {Command}", command);
 
         var (exitCode, output, error) = await RunCommandAsync(command);
 
         if (exitCode != 0)
         {
-            _logger.LogError("❌ Builder migration trigger başarısız oldu. Çıktı:\n{Output}", output + error);
+            _logger.LogError("❌ Builder migration trigger başarısız oldu.\n{Error}", output + error);
             throw new Exception($"Komut hatası ({exitCode}): {output + error}");
         }
 
-        _logger.LogInformation("✅ Builder migration triggered. Output:\n{Output}", output);
+        _logger.LogInformation("✅ Builder migration triggered.\n{Output}", output);
     }
 }

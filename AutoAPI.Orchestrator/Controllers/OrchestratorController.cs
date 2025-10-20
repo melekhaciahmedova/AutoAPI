@@ -1,104 +1,69 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
+using AutoAPI.Core.Services;
 
 namespace AutoAPI.Orchestrator.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrchestratorController(ILogger<OrchestratorController> logger) : ControllerBase
+    public class OrchestratorController(DockerService docker, ILogger<OrchestratorController> logger) : ControllerBase
     {
+        private readonly DockerService _docker = docker;
         private readonly ILogger<OrchestratorController> _logger = logger;
-        private const string EF_TOOL_PATH = "/src/tools/dotnet-ef";
-
-        // 🚨 GÜNCELLENDİ: Kullanıcının sağladığı MSSQL bağlantı dizesi kullanılıyor.
-        private const string DB_CONNECTION_STRING = "Server=65.108.38.170,1400;Database=auto_db;User Id=sa;Password=S!@sc0.@z;TrustServerCertificate=True";
-        private const string EF_CONNECTION_STRING_ENV = "ConnectionStrings__AppDbContext"; // EF Core'un aradığı format
 
         [HttpPost("migrate")]
-        public async Task<IActionResult> RunMigrationOnly([FromQuery] string name = "ManualMigration")
+        public async Task<IActionResult> RunMigrationAsync([FromQuery] string name = "ManualMigration")
         {
             var steps = new List<object>();
 
-            async Task<(int exitCode, string output, string error)> RunCommand(string stepName, string command)
+            try
             {
-                _logger.LogInformation($"▶️ [{stepName}] {command}");
-                var process = new Process
+                var efTool = await _docker.RunCommandAsync(
+                    "docker exec autoapi-builder bash -c 'mkdir -p /src/tools && " +
+                    "if [ ! -f /src/tools/dotnet-ef ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'"
+                );
+                steps.Add(new { step = "ensure-ef-tool", efTool.exitCode, efTool.output, efTool.error });
+                if (efTool.exitCode != 0)
+                    return StatusCode(500, new { message = "❌ EF tool installation failed.", steps });
+
+                var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
+                var add = await _docker.RunEfCommandAsync("ef-migrations-add",
+                    $"migrations add {migrationName} " +
+                    "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
+                    "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
+                    "--output-dir Migrations");
+                steps.Add(new { step = "ef-migrations-add", add.exitCode, add.output, add.error });
+                if (add.exitCode != 0)
+                    return StatusCode(500, new { message = "❌ Migration add failed.", steps });
+
+                var build = await _docker.RunCommandAsync(
+                    "docker exec autoapi-builder dotnet build /src/AutoAPI.API/AutoAPI.API.csproj -c Release"
+                );
+                steps.Add(new { step = "api-build", build.exitCode, build.output, build.error });
+                if (build.exitCode != 0)
+                    return StatusCode(500, new { message = "❌ API project build failed.", steps });
+
+                var update = await _docker.RunEfCommandAsync("ef-database-update",
+                    "database update " +
+                    "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
+                    "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
+                    "--context AppDbContext");
+                steps.Add(new { step = "ef-database-update", update.exitCode, update.output, update.error });
+                if (update.exitCode != 0)
+                    return StatusCode(500, new { message = "❌ Database update failed.", steps });
+
+                return Ok(new
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "/bin/bash",
-                        // Command'i tırnak içine alarak gönderiyoruz.
-                        Arguments = $"-c \"{command}\"",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
-                };
-
-                process.Start();
-                string output = await process.StandardOutput.ReadToEndAsync();
-                string error = await process.StandardError.ReadToEndAsync();
-                process.WaitForExit();
-
-                int exitCode = process.ExitCode;
-                if (exitCode == 0)
-                    _logger.LogInformation($"✅ [{stepName}] ExitCode={exitCode}");
-                else
-                    _logger.LogError($"❌ [{stepName}] ExitCode={exitCode}");
-
-                if (!string.IsNullOrWhiteSpace(error))
-                    _logger.LogWarning($"⚠️ [{stepName}] Error:\n{error}");
-
-                steps.Add(new { step = stepName, exitCode, output, error });
-                return (exitCode, output, error);
+                    message = "✅ Migration added and database updated successfully.",
+                    migrationName,
+                    migrationPath = "/src/AutoAPI.Data/Migrations",
+                    steps
+                });
             }
-
-            // 1️⃣ EF tool kontrol
-            var ensureEfTool = await RunCommand("ensure-ef-tool",
-                $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && export PATH=$PATH:/src/tools && " +
-                $"if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
-            if (ensureEfTool.exitCode != 0)
-                return StatusCode(500, new { message = "❌ EF tool install failed.", steps });
-
-            // 2️⃣ Migration oluştur
-            var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
-            var migrationAdd = await RunCommand("ef-migrations-add",
-                $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} migrations add {migrationName} " +
-                "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
-                "--output-dir Migrations");
-
-            if (migrationAdd.exitCode != 0)
-                return StatusCode(500, new { message = "❌ Migration add failed.", steps });
-
-            // 3️⃣ Startup projesini derle (Yeni migration'ı tanıması için)
-            var buildApiProject = await RunCommand("api-project-build",
-                $"docker exec autoapi-builder dotnet build /src/AutoAPI.API/AutoAPI.API.csproj");
-
-            if (buildApiProject.exitCode != 0)
-                return StatusCode(500, new { message = "❌ API project build failed.", steps });
-
-            // 4️⃣ Database update (Bağlantı dizesi ENV olarak geçiriliyor)
-            // KRİTİK DÜZELTME: --verbose bayrağı EKLENDİ.
-            var migrationUpdate = await RunCommand("ef-database-update",
-                $"docker exec autoapi-builder bash -c 'ASPNETCORE_ENVIRONMENT=Development " +
-                $"{EF_CONNECTION_STRING_ENV}=\\\"{DB_CONNECTION_STRING}\\\" " +
-                $"{EF_TOOL_PATH} database update " +
-                $"--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                $"--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
-                $"--context AppDbContext --verbose'"); // <-- BURAYA EKLENDİ
-
-            if (migrationUpdate.exitCode != 0)
-                return StatusCode(500, new { message = "❌ Database update failed.", steps });
-
-            return Ok(new
+            catch (Exception ex)
             {
-                message = "✅ Migration added and database updated successfully.",
-                migrationName,
-                migrationPath = "/src/AutoAPI.Data/Migrations",
-                steps
-            });
+                _logger.LogError(ex, "🚨 Migration pipeline failed.");
+                return StatusCode(500, new { message = ex.Message, steps });
+            }
         }
     }
 }
