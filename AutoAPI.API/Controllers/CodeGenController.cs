@@ -22,9 +22,6 @@ namespace AutoAPI.API.Controllers
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly ILogger<CodeGenController> _logger = logger;
 
-        // ============================================================
-        // 1️⃣ Entity oluşturma
-        // ============================================================
         [HttpPost("generate-entity")]
         public async Task<IActionResult> GenerateEntity([FromBody] ClassDefinition definition)
         {
@@ -44,7 +41,6 @@ namespace AutoAPI.API.Controllers
 
             return Ok($"{definition.ClassName} successfully generated!");
         }
-
 
         [HttpGet("check")]
         public IActionResult CheckEntity([FromQuery] string entityName)
