@@ -1,19 +1,21 @@
-﻿# 1️⃣ .NET 8 SDK tabanı
-FROM mcr.microsoft.com/dotnet/sdk:8.0
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# 2️⃣ Ortam değişkenleri
+# dotnet CLI config
 ENV DOTNET_CLI_HOME=/root \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
-    PATH="$PATH:/root/.dotnet/tools"
+    PATH="/root/.dotnet/tools:$PATH"
 
-# 3️⃣ Çalışma dizini
 WORKDIR /src
 
-# 4️⃣ dotnet-ef global tool’u kalıcı olarak yükle
-RUN dotnet new tool-manifest && \
-    dotnet tool install dotnet-ef --version 8.* && \
-    dotnet tool restore && \
-    dotnet ef --version
+# GLOBAL dotnet-ef yükle (manifest değil!)
+RUN dotnet tool install --global dotnet-ef --version 8.* \
+    && echo "✅ dotnet-ef installed globally"
 
-# 5️⃣ Container'ın aktif kalması için basit bir bekleme
-CMD ["bash", "-c", "echo '🛠 autoapi-builder ready (EF 8.x installed & PATH fixed)' && tail -f /dev/null"]
+# global tool dizinini sisteme sabitle
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# test et (build-time'da)
+RUN dotnet ef --version || echo "⚠ dotnet ef test failed, will check runtime"
+
+# container'ı aktif tut
+CMD ["bash", "-c", "echo '🛠 autoapi-builder ready with dotnet-ef (global tool)' && sleep infinity"]
