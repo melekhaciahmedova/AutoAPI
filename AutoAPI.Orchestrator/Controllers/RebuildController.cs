@@ -33,20 +33,20 @@ namespace AutoAPI.Orchestrator.Controllers
                 return StatusCode(500, new { message = "❌ Context build failed.", steps });
 
             // 1️⃣ Down
-            var down = await RunCommand("docker compose down",
-                $"docker compose -f {composeFilePath} down");
+            var down = await RunCommand("docker compose stop",
+    $"docker compose -f {composeFilePath} stop autoapi-api autoapi-builder");
             if (down.exitCode != 0)
-                return StatusCode(500, new { message = "❌ docker-compose down failed", steps });
+                return StatusCode(500, new { message = "❌ docker-compose stop failed", steps });
 
             // 2️⃣ Build
             var build = await RunCommand("docker compose build",
-                $"docker compose -f {composeFilePath} build --no-cache");
+    $"docker compose -f {composeFilePath} build --no-cache autoapi-api autoapi-builder");
             if (build.exitCode != 0)
                 return StatusCode(500, new { message = "❌ docker-compose build failed", steps });
 
             // 3️⃣ Up
             var up = await RunCommand("docker compose up",
-                $"docker compose -f {composeFilePath} up -d");
+                $"docker compose -f {composeFilePath} up -d autoapi-api autoapi-builder");
             if (up.exitCode != 0)
                 return StatusCode(500, new { message = "❌ docker-compose up failed", steps });
 
