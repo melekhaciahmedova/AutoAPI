@@ -7,15 +7,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Content Include="Templates\appdbcontext.scriban">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </Content>
-	  <Content Include="Templates\configuration.scriban">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </Content>
-	  <Content Include="Templates\entity.scriban">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </Content>
+		<Content Include="Templates\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -30,9 +25,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\AutoAPI.Core\AutoAPI.Core.csproj" />
-	  <ProjectReference Include="..\AutoAPI.Data\AutoAPI.Data.csproj" />
-	  <ProjectReference Include="..\AutoAPI.Domain\AutoAPI.Domain.csproj" />
+		<ProjectReference Include="..\AutoAPI.Core\AutoAPI.Core.csproj" />
+		<ProjectReference Include="..\AutoAPI.Data\AutoAPI.Data.csproj" />
+		<ProjectReference Include="..\AutoAPI.Domain\AutoAPI.Domain.csproj" />
 	</ItemGroup>
 
 </Project>
