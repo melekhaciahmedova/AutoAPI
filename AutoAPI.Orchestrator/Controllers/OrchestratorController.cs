@@ -74,21 +74,18 @@ namespace AutoAPI.Orchestrator.Controllers
             // 4️⃣ Create EF migration
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
             var migrationAdd = await RunCommand("ef-migrations-add",
-                $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_PATH_FIX_PREFIX} " +
-                $"dotnet ef migrations add {migrationName} " +
-                $"--project AutoAPI.Data.csproj " +
-                $"--startup-project ../AutoAPI.API/AutoAPI.API.csproj " +
-                $"--output-dir Migrations {EF_PATH_FIX_SUFFIX}");
+    $"docker exec -w /src autoapi-builder bash -lc " +
+    $"\"dotnet --project AutoAPI.Data/AutoAPI.Data.csproj ef migrations add {migrationName} --startup-project AutoAPI.API/AutoAPI.API.csproj --output-dir AutoAPI.Data/Migrations\"");
+
 
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
             // 5️⃣ Apply migrations
             var migrationUpdate = await RunCommand("ef-database-update",
-                $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_PATH_FIX_PREFIX} " +
-                $"dotnet ef database update " +
-                $"--project AutoAPI.Data.csproj " +
-                $"--startup-project ../AutoAPI.API/AutoAPI.API.csproj {EF_PATH_FIX_SUFFIX}");
+    $"docker exec -w /src autoapi-builder bash -lc " +
+    $"\"dotnet --project AutoAPI.Data/AutoAPI.Data.csproj ef database update --startup-project AutoAPI.API/AutoAPI.API.csproj\"");
+
 
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
