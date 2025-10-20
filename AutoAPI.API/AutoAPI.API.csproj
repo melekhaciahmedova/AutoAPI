@@ -18,12 +18,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="Templates\**\*">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
-	</ItemGroup>
-
-	<ItemGroup>
 	  <ProjectReference Include="..\AutoAPI.Core\AutoAPI.Core.csproj" />
 	  <ProjectReference Include="..\AutoAPI.Data\AutoAPI.Data.csproj" />
 	  <ProjectReference Include="..\AutoAPI.Domain\AutoAPI.Domain.csproj" />
