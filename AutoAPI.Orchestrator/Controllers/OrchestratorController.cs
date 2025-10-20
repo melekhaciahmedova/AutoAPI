@@ -34,13 +34,8 @@ namespace AutoAPI.Orchestrator.Controllers
 
                 process.Start();
                 string output = await process.StandardOutput.ReadToEndAsync();
-                string error = await process.StandardError.ReadToEndAsync(); // Hata: Burada StandardError.StandardError olmamalı
+                string error = await process.StandardError.ReadToEndAsync();
                 process.WaitForExit();
-
-                // DÜZELTME: Hata Okuma Metodu Güncellendi (process.StandardError.ReadToEndAsync() olmalıydı)
-                // Bu kodda zaten doğru olduğu varsayılıyor, sadece eski koddaki ReadToEndAsync'i düzeltelim.
-                // Not: Hata kaynağı bu değil, ama hata okuma kodunuzda bir potansiyel vardı.
-                // Orijinal kodunuzda doğru görünüyor: string error = await process.StandardError.ReadToEndAsync();
 
                 int exitCode = process.ExitCode;
                 if (exitCode == 0)
@@ -73,16 +68,16 @@ namespace AutoAPI.Orchestrator.Controllers
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
-            // 🆕 YENİ ADIM: Migration dosyası oluşturulduktan hemen sonra projeyi derle.
-            // Bu, derleyicinin yeni migration dosyasını tanımasını sağlar.
-            var buildDataProject = await RunCommand("data-project-build",
-                $"docker exec autoapi-builder dotnet build /src/AutoAPI.Data/AutoAPI.Data.csproj");
+            // 🆕 DÜZELTME: Migration dosyası oluşturulduktan hemen sonra Startup projesini derle.
+            // Bu, EF Core'un Connection String'i ve yeni migration'ı tanımasını sağlar.
+            var buildApiProject = await RunCommand("api-project-build",
+                $"docker exec autoapi-builder dotnet build /src/AutoAPI.API/AutoAPI.API.csproj"); // Startup projesi derleniyor.
 
-            if (buildDataProject.exitCode != 0)
-                return StatusCode(500, new { message = "❌ Data project build failed.", steps });
+            if (buildApiProject.exitCode != 0)
+                return StatusCode(500, new { message = "❌ API project build failed.", steps });
 
             // 3️⃣ Database update
-            // Şimdi, derlenmiş proje yeni migration'ı bilecektir.
+            // Şimdi, derlenmiş API projesi yeni migration'ı bilecektir ve veritabanına uygulayacaktır.
             var migrationUpdate = await RunCommand("ef-database-update",
                 $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
