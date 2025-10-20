@@ -90,7 +90,6 @@ namespace AutoAPI.Orchestrator.Controllers
             $"--project AutoAPI.Data.csproj " +
             $"--startup-project ../AutoAPI.API/AutoAPI.API.csproj {EF_PATH_FIX_SUFFIX}");
 
-
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
 
