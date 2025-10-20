@@ -1,6 +1,7 @@
-﻿using AutoAPI.Domain.Models;
+﻿using AutoAPI.Core.Services;
+using AutoAPI.Domain.Models;
 
-namespace AutoAPI.API.Services.Generation;
+namespace AutoAPI.Core.Generation;
 public class EntityGeneratorService
 {
     private readonly ITemplateRenderer _renderer;

@@ -1,5 +1,4 @@
-﻿using AutoAPI.API.Services;
-using AutoAPI.API.Services.Generation;
+﻿using AutoAPI.Core.Generation;
 using AutoAPI.Core.Services;
 using AutoAPI.Data.Infrastructure;
 using Microsoft.EntityFrameworkCore;

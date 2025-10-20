@@ -1,7 +1,7 @@
 ﻿using AutoAPI.Domain.Models;
 using Microsoft.OpenApi.Readers;
 
-namespace AutoAPI.API.Services.Generation;
+namespace AutoAPI.Core.Generation;
 
 public class SwaggerParserService
 {

@@ -1,6 +1,6 @@
 ﻿using Scriban;
 
-namespace AutoAPI.API.Services;
+namespace AutoAPI.Core.Services;
 public interface ITemplateRenderer
 {
     Task<string> RenderAsync(string templateName, object model);

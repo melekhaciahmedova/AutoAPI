@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace AutoAPI.API.Services.Generation
+namespace AutoAPI.Core.Generation
 {
     public class MigrationGeneratorService(string contentRootPath)
     {

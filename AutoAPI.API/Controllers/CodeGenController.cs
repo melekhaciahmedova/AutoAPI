@@ -1,5 +1,5 @@
-﻿using AutoAPI.API.Services;
-using AutoAPI.API.Services.Generation;
+﻿using AutoAPI.Core.Generation;
+using AutoAPI.Core.Services;
 using AutoAPI.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Runtime.Loader;
