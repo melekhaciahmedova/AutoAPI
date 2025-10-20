@@ -5,19 +5,13 @@ namespace AutoAPI.Orchestrator.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrchestratorController : ControllerBase
+    public class OrchestratorController(ILogger<OrchestratorController> logger) : ControllerBase
     {
-        private readonly ILogger<OrchestratorController> _logger;
-        private readonly string _composeFile = "/src/docker-compose.yml";
+        private readonly ILogger<OrchestratorController> _logger = logger;
         private const string EF_TOOL_PATH = "/src/tools/dotnet-ef";
 
-        public OrchestratorController(ILogger<OrchestratorController> logger)
-        {
-            _logger = logger;
-        }
-
-        [HttpPost("trigger")]
-        public async Task<IActionResult> TriggerMigration([FromQuery] string name = "AutoMigration")
+        [HttpPost("migrate")]
+        public async Task<IActionResult> RunMigrationOnly([FromQuery] string name = "ManualMigration")
         {
             var steps = new List<object>();
 
@@ -53,47 +47,30 @@ namespace AutoAPI.Orchestrator.Controllers
                 return (exitCode, output, error);
             }
 
-            // 1️⃣ Temizlik
-            await RunCommand("remove-api", "docker rm -f autoapi-api || true");
-            await RunCommand("remove-builder", "docker rm -f autoapi-builder || true");
-
-            // 2️⃣ Yeniden build
-            var build = await RunCommand("build", $"docker compose -f \"{_composeFile}\" build --no-cache autoapi-builder autoapi-api");
-            if (build.exitCode != 0)
-                return StatusCode(500, new { message = "❌ Build failed.", steps });
-
-            // 3️⃣ Builder'ı başlat
-            var upBuilder = await RunCommand("up-builder", $"docker compose -f \"{_composeFile}\" up -d --no-deps autoapi-builder");
-            if (upBuilder.exitCode != 0)
-                return StatusCode(500, new { message = "❌ Builder start failed.", steps });
-
-            // 4️⃣ EF tool’u garantiye al
+            // 1️⃣ EF tool’u kontrol et
             var ensureEfTool = await RunCommand("ensure-ef-tool",
-    $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
+                $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
             if (ensureEfTool.exitCode != 0)
                 return StatusCode(500, new { message = "❌ EF tool install failed.", steps });
 
-            // 5️⃣ Migration oluştur
+            // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
             var migrationAdd = await RunCommand("ef-migrations-add",
                 $"docker exec -w /src autoapi-builder bash -c \"{EF_TOOL_PATH} migrations add {migrationName} --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj --output-dir AutoAPI.Data/Migrations\"");
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
-            // 6️⃣ Database update
+            // 3️⃣ Database update
             var migrationUpdate = await RunCommand("ef-database-update",
                 $"docker exec -w /src autoapi-builder bash -c \"{EF_TOOL_PATH} database update --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj\"");
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
 
-            // 7️⃣ API container’ı yeniden başlat
-            var upApi = await RunCommand("up-api", $"docker compose -f \"{_composeFile}\" up -d --no-deps autoapi-api");
-            if (upApi.exitCode != 0)
-                return StatusCode(500, new { message = "❌ API start failed.", steps });
-
             return Ok(new
             {
-                message = "✅ Migration and rebuild completed successfully.",
+                message = "✅ Migration added and database updated successfully.",
+                migrationName,
+                migrationPath = "/src/AutoAPI.Data/Migrations",
                 steps
             });
         }
