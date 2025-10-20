@@ -4,10 +4,15 @@ using System.Reflection;
 
 namespace AutoAPI.Data.Infrastructure
 {
-    public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+    public class AppDbContext : DbContext
     {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
+
         {{~ for e in entities ~}}
-        public DbSet<{{ e.name }}> {{ e.name }}s { get; set; }
+        public DbSet<{{ e.name }}> {{ e.name }}s { get; set; } = null!;
         {{~ end ~}}
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
