@@ -34,8 +34,13 @@ namespace AutoAPI.Orchestrator.Controllers
 
                 process.Start();
                 string output = await process.StandardOutput.ReadToEndAsync();
-                string error = await process.StandardError.ReadToEndAsync();
+                string error = await process.StandardError.ReadToEndAsync(); // Hata: Burada StandardError.StandardError olmamalı
                 process.WaitForExit();
+
+                // DÜZELTME: Hata Okuma Metodu Güncellendi (process.StandardError.ReadToEndAsync() olmalıydı)
+                // Bu kodda zaten doğru olduğu varsayılıyor, sadece eski koddaki ReadToEndAsync'i düzeltelim.
+                // Not: Hata kaynağı bu değil, ama hata okuma kodunuzda bir potansiyel vardı.
+                // Orijinal kodunuzda doğru görünüyor: string error = await process.StandardError.ReadToEndAsync();
 
                 int exitCode = process.ExitCode;
                 if (exitCode == 0)
@@ -52,7 +57,6 @@ namespace AutoAPI.Orchestrator.Controllers
 
             // 1️⃣ EF tool kontrol
             var ensureEfTool = await RunCommand("ensure-ef-tool",
-                // Bu komutta zaten iç içe tırnak olduğu için böyle kalabilir.
                 $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && export PATH=$PATH:/src/tools && " +
                 $"if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
             if (ensureEfTool.exitCode != 0)
@@ -60,19 +64,25 @@ namespace AutoAPI.Orchestrator.Controllers
 
             // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-            // DÜZELTME: Tanınmayan '--force' parametresi kaldırıldı.
             var migrationAdd = await RunCommand("ef-migrations-add",
                 $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} migrations add {migrationName} " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
                 "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
-                "--output-dir Migrations"); // --force KALDIRILDI
+                "--output-dir Migrations");
 
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
+            // 🆕 YENİ ADIM: Migration dosyası oluşturulduktan hemen sonra projeyi derle.
+            // Bu, derleyicinin yeni migration dosyasını tanımasını sağlar.
+            var buildDataProject = await RunCommand("data-project-build",
+                $"docker exec autoapi-builder dotnet build /src/AutoAPI.Data/AutoAPI.Data.csproj");
+
+            if (buildDataProject.exitCode != 0)
+                return StatusCode(500, new { message = "❌ Data project build failed.", steps });
+
             // 3️⃣ Database update
-            // Tırnak işaretleri kaldırılmış haliyle doğru çalışması bekleniyor.
+            // Şimdi, derlenmiş proje yeni migration'ı bilecektir.
             var migrationUpdate = await RunCommand("ef-database-update",
                 $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
