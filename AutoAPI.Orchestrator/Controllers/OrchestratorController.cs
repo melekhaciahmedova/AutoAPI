@@ -56,13 +56,16 @@ namespace AutoAPI.Orchestrator.Controllers
             // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
             var migrationAdd = await RunCommand("ef-migrations-add",
-                $"docker exec -w /src autoapi-builder bash -c \"{EF_TOOL_PATH} migrations add {migrationName} --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj --output-dir AutoAPI.Data/Migrations\"");
+    $"docker exec -w /src autoapi-builder bash -c '{EF_TOOL_PATH} migrations add {migrationName} --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj --output-dir AutoAPI.Data/Migrations'");
+
+
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
             // 3️⃣ Database update
             var migrationUpdate = await RunCommand("ef-database-update",
-                $"docker exec -w /src autoapi-builder bash -c \"{EF_TOOL_PATH} database update --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj\"");
+    $"docker exec -w /src autoapi-builder bash -c '{EF_TOOL_PATH} database update --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj'");
+
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
 
