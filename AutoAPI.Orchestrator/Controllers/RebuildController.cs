@@ -54,30 +54,31 @@ namespace AutoAPI.Orchestrator.Controllers
             _logger.LogInformation("🔍 AppDbContext doğrulaması başlatılıyor...");
 
             var checkCmd = """
-                docker exec autoapi-builder sh -c "cd /tmp && 
-                dotnet new console -n Checker --force >/dev/null &&
-                cd Checker &&
-                cp -r /src/AutoAPI.API/bin/Release/net8.0/* . &&
-                echo '#pragma warning disable
-                using System;
-                using System.Reflection;
-                using System.Linq;
-                class P {
-                 static void Main(){
-                  try {
-                    var asm = Assembly.LoadFrom("/tmp/Checker/AutoAPI.Data.dll");
-                    var ctx = asm.GetTypes().Where(t => t.FullName != null && t.FullName.Contains("AppDbContext")).ToList();
-                    if (ctx.Any())
-                      Console.WriteLine($"✅ Found: {string.Join(", ", ctx.Select(t => t.FullName))}");
-                    else
-                      Console.WriteLine("❌ AppDbContext not found.");
-                  } catch (Exception ex) {
-                    Console.WriteLine($"❌ Exception: {ex.Message}");
-                  }
-                 }
-                }' > Program.cs &&
-                dotnet run --no-restore"
-                """;
+docker exec autoapi-builder sh -c "cd /tmp && \
+dotnet new console -n Checker --force >/dev/null && \
+cd Checker && \
+cp -r /src/AutoAPI.API/bin/Release/net8.0/* . && \
+echo '#pragma warning disable
+using System;
+using System.Reflection;
+using System.Linq;
+class P {
+ static void Main(){
+  try {
+    var asm = Assembly.LoadFrom(\"/tmp/Checker/AutoAPI.Data.dll\");
+    var ctx = asm.GetTypes().Where(t => t.FullName != null && t.FullName.Contains(\"AppDbContext\")).ToList();
+    if (ctx.Any())
+      Console.WriteLine($\"✅ Found: {string.Join(\", \", ctx.Select(t => t.FullName))}\");
+    else
+      Console.WriteLine(\"❌ AppDbContext not found.\");
+  } catch (Exception ex) {
+    Console.WriteLine($\"❌ Exception: {ex.Message}\");
+  }
+ }
+}' > Program.cs && \
+dotnet run --no-restore"
+""";
+
 
             var check = await RunCommand("AppDbContext verification", checkCmd);
 
