@@ -4,12 +4,21 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+		<!-- 🔒 Default item discovery kapalı -->
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 	</PropertyGroup>
 
+	<!-- 🔗 Domain referansı -->
 	<ItemGroup>
 		<ProjectReference Include="..\AutoAPI.Domain\AutoAPI.Domain.csproj" />
 	</ItemGroup>
 
+	<!-- 📦 Paketler -->
 	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.5" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.5">
@@ -18,13 +27,20 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.5" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.5" />
-
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.5">
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 	</ItemGroup>
 
+	<!-- 🧱 Derlenecek dosyalar -->
 	<ItemGroup>
-		<Compile Include="Infrastructure\AppDbContext.cs" />
+		<Compile Include="Infrastructure\**\*.cs" />
+		<!-- AppDbContext + Configurations -->
 	</ItemGroup>
+
+	<!-- 📂 Klasör yapısı (görsel olarak IDE’de görünsün) -->
+	<ItemGroup>
+		<Folder Include="Infrastructure\" />
+	</ItemGroup>
+
 </Project>
