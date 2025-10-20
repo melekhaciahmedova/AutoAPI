@@ -28,4 +28,8 @@
 	  <Folder Include="Infrastructure\Configurations\" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<Compile Include="Infrastructure/**/*.cs" />
+	</ItemGroup>
+
 </Project>
