@@ -36,7 +36,7 @@ public class RebuildController(DockerService docker, ILogger<RebuildController> 
 
         // 2️⃣ Docker image rebuild (builder konteynerinden değil, ana hosttan)
         // Not: docker.sock host'a mount edilmiş olmalı
-        var buildCmd = $"docker compose -f {composeFilePath} build autoapi-api";
+        var buildCmd = $"docker compose -f {composeFilePath} build --no-cache autoapi-api";
         var build = await _docker.RunCommandAsync(buildCmd);
         steps.Add(new { step = "docker compose build", build.exitCode, build.output, build.error });
 
