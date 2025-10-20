@@ -69,7 +69,7 @@ namespace AutoAPI.Orchestrator.Controllers
 
             // 4️⃣ EF tool’u garantiye al
             var ensureEfTool = await RunCommand("ensure-ef-tool",
-                $"docker exec autoapi-builder bash -c \"mkdir -p /src/tools && if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi\"");
+    $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
             if (ensureEfTool.exitCode != 0)
                 return StatusCode(500, new { message = "❌ EF tool install failed.", steps });
 
