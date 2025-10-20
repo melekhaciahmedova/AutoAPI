@@ -9,6 +9,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - PATH=/root/.dotnet/tools:$PATH
+    working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
       - /root/.nuget/packages:/root/.nuget/packages:ro
@@ -25,6 +26,7 @@ services:
       - "5222:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+    working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
     networks:
@@ -40,6 +42,7 @@ services:
       - "5113:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+    working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
       - /var/run/docker.sock:/var/run/docker.sock
