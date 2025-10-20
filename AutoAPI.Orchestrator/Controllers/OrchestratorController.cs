@@ -80,13 +80,14 @@ namespace AutoAPI.Orchestrator.Controllers
             if (buildApiProject.exitCode != 0)
                 return StatusCode(500, new { message = "❌ API project build failed.", steps });
 
-            // 4️⃣ Database update (Bağlantı dizesi ENV olarak geçiriliyor)
+            // 4️⃣ Database update (Bağlantı dizesi ENV olarak geçiriliyor ve --context eklendi)
             var migrationUpdate = await RunCommand("ef-database-update",
                 $"docker exec -e ASPNETCORE_ENVIRONMENT=Development " +
                 $"-e {EF_CONNECTION_STRING_ENV}=\"{DB_CONNECTION_STRING}\" " + // Yeni MSSQL dizesi ENV olarak ayarlandı
                 $"-w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj");
+                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
+                "--context AppDbContext"); // KRİTİK: Hangi DbContext'i kullanacağını açıkça belirtiyoruz.
 
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
