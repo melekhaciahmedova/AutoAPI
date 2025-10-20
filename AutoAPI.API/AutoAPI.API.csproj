@@ -7,6 +7,18 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Content Include="Templates\appdbcontext.scriban">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="Templates\configuration.scriban">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="Templates\entity.scriban">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.5" />
 		<PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.28" />
 		<PackageReference Include="Scriban" Version="6.4.0" />
