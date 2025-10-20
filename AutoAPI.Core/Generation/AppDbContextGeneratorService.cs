@@ -1,6 +1,5 @@
 ﻿using AutoAPI.Core.Services;
 using AutoAPI.Domain.Models;
-using System.Text.RegularExpressions;
 
 namespace AutoAPI.Core.Generation;
 
@@ -8,46 +7,45 @@ public class AppDbContextGeneratorService
 {
     private readonly ITemplateRenderer _renderer;
     private readonly string _contextFilePath;
+    private readonly string _entitiesDirectoryPath; // Yeni: Entity'lerin yolunu tutacağız
 
     public AppDbContextGeneratorService(ITemplateRenderer renderer, string projectRoot)
     {
         _renderer = renderer;
 
         var solutionDirectory = Directory.GetParent(projectRoot)?.FullName
-            ?? throw new InvalidOperationException("Solution directory not found.");
+             ?? throw new InvalidOperationException("Solution directory not found.");
 
+        // 1️⃣ DÜZELTME: DbContext dosyasının yolu doğru olmalı
         _contextFilePath = Path.Combine(solutionDirectory, "AutoAPI.Data", "Infrastructure", "AppDbContext.cs");
+
+        // 2️⃣ YENİ: Entity'leri okumak için Domain projesinin yolunu oluştur.
+        _entitiesDirectoryPath = Path.Combine(solutionDirectory, "AutoAPI.Domain", "Entities");
     }
 
     public async Task GenerateAppDbContextAsync(List<ClassDefinition> definitions)
     {
-        var contextPath = _contextFilePath;
-        var existingEntities = new List<string>();
-
-        if (File.Exists(contextPath))
-        {
-            var lines = await File.ReadAllLinesAsync(contextPath);
-            foreach (var line in lines)
-            {
-                var match = Regex.Match(line, @"DbSet<\s*(\w+)\s*>");
-                if (match.Success)
-                    existingEntities.Add(match.Groups[1].Value);
-            }
-        }
-
-        var comparer = StringComparer.OrdinalIgnoreCase;
-        var newEntities = definitions.Select(d => d.ClassName)
-            .Except(existingEntities, comparer)
+        // 1️⃣ Tüm Entity'leri Domain klasöründen oku
+        var allEntities = Directory.GetFiles(_entitiesDirectoryPath, "*.cs")
+            .Select(Path.GetFileNameWithoutExtension)
+            // Sadece C# dosya adlarını alıyoruz.
+            .Where(name => name != null && name != "BaseEntity") // BaseEntity varsa hariç tut
+            .Distinct()
             .ToList();
 
-        existingEntities.AddRange(newEntities);
+        // 2️⃣ Hata: Eğer appdbcontext.scriban'da DbSet'leri çoğul yapmak için 's' takısı 
+        // kullanıyorsanız ('{{ e.name }}s'), burada da aynı formatı korumak gerekir.
 
         var templateModel = new
         {
-            entities = existingEntities.Select(e => new { name = e }).ToList()
+            // Scriban'a gönderilen model artık tüm Entity dosyalarını içeriyor.
+            entities = allEntities.Select(e => new { name = e }).ToList()
         };
 
+        // 3️⃣ Şablonu çalıştır ve hedef yola yaz
         var output = await _renderer.RenderAsync("appdbcontext.scriban", templateModel);
-        await File.WriteAllTextAsync(contextPath, output);
+
+        // KRİTİK: Dosya yazma işlemi başarılı olmalı.
+        await File.WriteAllTextAsync(_contextFilePath, output);
     }
 }
