@@ -1,19 +1,19 @@
-﻿# 1️⃣ Temel SDK image
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS builder
+﻿# 1️⃣ .NET 8 SDK tabanı
+FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# 2️⃣ dotnet-ef global tool yükle
-RUN dotnet tool install --global dotnet-ef
-ENV PATH="$PATH:/root/.dotnet/tools"
+# 2️⃣ Ortam değişkenleri
+ENV DOTNET_CLI_HOME=/root \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    PATH="$PATH:/root/.dotnet/tools"
 
-# 3️⃣ Çalışma dizini /src
+# 3️⃣ Çalışma dizini
 WORKDIR /src
 
-# 4️⃣ Host’tan projeyi kopyala (eğer volume mount edilmeyecekse)
-# COPY . .
+# 4️⃣ dotnet-ef global tool’u kalıcı olarak yükle
+RUN dotnet new tool-manifest && \
+    dotnet tool install dotnet-ef --version 8.* && \
+    dotnet tool restore && \
+    dotnet ef --version
 
-# 5️⃣ Gerekiyorsa restore / build adımları
-# RUN dotnet restore AutoAPI.sln
-# RUN dotnet build AutoAPI.sln -c Release
-
-# 6️⃣ Default davranış
-CMD ["bash"]
+# 5️⃣ Container'ın aktif kalması için basit bir bekleme
+CMD ["bash", "-c", "echo '🛠 autoapi-builder ready (EF 8.x installed & PATH fixed)' && tail -f /dev/null"]
