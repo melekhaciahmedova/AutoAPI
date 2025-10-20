@@ -10,6 +10,10 @@ namespace AutoAPI.Orchestrator.Controllers
         private readonly ILogger<OrchestratorController> _logger = logger;
         private const string EF_TOOL_PATH = "/src/tools/dotnet-ef";
 
+        // 🚨 GÜNCELLENDİ: Kullanıcının sağladığı MSSQL bağlantı dizesi kullanılıyor.
+        private const string DB_CONNECTION_STRING = "Server=65.108.38.170,1400;Database=auto_db;User Id=sa;Password=S!@sc0.@z;TrustServerCertificate=True";
+        private const string EF_CONNECTION_STRING_ENV = "ConnectionStrings__AppDbContext"; // EF Core'un aradığı format
+
         [HttpPost("migrate")]
         public async Task<IActionResult> RunMigrationOnly([FromQuery] string name = "ManualMigration")
         {
@@ -59,6 +63,7 @@ namespace AutoAPI.Orchestrator.Controllers
 
             // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
+            // Migration Add komutu, derleme ve bağlantı dizesi gereksinimlerini hafifletir.
             var migrationAdd = await RunCommand("ef-migrations-add",
                 $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} migrations add {migrationName} " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
@@ -68,18 +73,18 @@ namespace AutoAPI.Orchestrator.Controllers
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
-            // 🆕 DÜZELTME: Migration dosyası oluşturulduktan hemen sonra Startup projesini derle.
-            // Bu, EF Core'un Connection String'i ve yeni migration'ı tanımasını sağlar.
+            // 3️⃣ Startup projesini derle (Yeni migration'ı tanıması için)
             var buildApiProject = await RunCommand("api-project-build",
-                $"docker exec autoapi-builder dotnet build /src/AutoAPI.API/AutoAPI.API.csproj"); // Startup projesi derleniyor.
+                $"docker exec autoapi-builder dotnet build /src/AutoAPI.API/AutoAPI.API.csproj");
 
             if (buildApiProject.exitCode != 0)
                 return StatusCode(500, new { message = "❌ API project build failed.", steps });
 
-            // 3️⃣ Database update
-            // Şimdi, derlenmiş API projesi yeni migration'ı bilecektir ve veritabanına uygulayacaktır.
+            // 4️⃣ Database update (Bağlantı dizesi ENV olarak geçiriliyor)
             var migrationUpdate = await RunCommand("ef-database-update",
-                $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
+                $"docker exec -e ASPNETCORE_ENVIRONMENT=Development " +
+                $"-e {EF_CONNECTION_STRING_ENV}=\"{DB_CONNECTION_STRING}\" " + // Yeni MSSQL dizesi ENV olarak ayarlandı
+                $"-w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
                 "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj");
 
