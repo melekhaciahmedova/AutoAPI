@@ -23,6 +23,7 @@ namespace AutoAPI.Orchestrator.Controllers
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = "/bin/bash",
+                        // Command'i tırnak içine alarak gönderiyoruz.
                         Arguments = $"-c \"{command}\"",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -51,6 +52,7 @@ namespace AutoAPI.Orchestrator.Controllers
 
             // 1️⃣ EF tool kontrol
             var ensureEfTool = await RunCommand("ensure-ef-tool",
+                // Bu komutta zaten iç içe tırnak olduğu için böyle kalabilir.
                 $"docker exec autoapi-builder bash -c 'mkdir -p /src/tools && export PATH=$PATH:/src/tools && " +
                 $"if [ ! -f {EF_TOOL_PATH} ]; then dotnet tool install --tool-path /src/tools dotnet-ef --version 8.*; fi'");
             if (ensureEfTool.exitCode != 0)
@@ -58,20 +60,24 @@ namespace AutoAPI.Orchestrator.Controllers
 
             // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+            // DÜZELTME: Bash'e gönderilen komut içindeki tırnak işaretleri kaldırıldı.
+            // Bu, bash'in komutu daha doğru bir şekilde çalıştırmasını sağlar.
             var migrationAdd = await RunCommand("ef-migrations-add",
-                $"docker exec -w /src/AutoAPI.Data autoapi-builder bash -c \"{EF_TOOL_PATH} migrations add {migrationName} " +
+                $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} migrations add {migrationName} " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
                 "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
-                "--output-dir Migrations --force\"");
+                "--output-dir Migrations --force"); // Tırnak yok
 
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
             // 3️⃣ Database update
+            // DÜZELTME: Tırnak işaretleri kaldırıldı.
             var migrationUpdate = await RunCommand("ef-database-update",
-                $"docker exec -w /src/AutoAPI.Data autoapi-builder bash -c \"{EF_TOOL_PATH} database update " +
+                $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj\"");
+                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj"); // Tırnak yok
 
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
