@@ -80,10 +80,11 @@ namespace AutoAPI.Orchestrator.Controllers
                 return StatusCode(500, new { message = "❌ API project build failed.", steps });
 
             // 4️⃣ Database update (Bağlantı dizesi ENV olarak geçiriliyor ve --context eklendi)
-            // KRİTİK DÜZELTME: Bash komutu, ENV değişkenlerini ve komutu güvenli bir şekilde tek tırnaklarla sarmalamak için değiştirildi.
+            // KRİTİK DÜZELTME: Bash'e geçirilen bağlantı dizesi değerindeki çift tırnakları (\") kaçırmak için 
+            // üç ters eğik çizgi (\\\" ) kullanılarak bash parsing sorunu çözüldü.
             var migrationUpdate = await RunCommand("ef-database-update",
                 $"docker exec autoapi-builder bash -c 'ASPNETCORE_ENVIRONMENT=Development " +
-                $"{EF_CONNECTION_STRING_ENV}=\"{DB_CONNECTION_STRING}\" " +
+                $"{EF_CONNECTION_STRING_ENV}=\\\"{DB_CONNECTION_STRING}\\\" " +
                 $"{EF_TOOL_PATH} database update " +
                 $"--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
                 $"--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
