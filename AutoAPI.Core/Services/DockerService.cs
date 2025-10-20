@@ -2,12 +2,10 @@
 using System.Diagnostics;
 
 namespace AutoAPI.Core.Services;
-
 public class DockerService
 {
     private readonly ILogger<DockerService> _logger;
     private string _dockerCmd = "docker compose";
-
     public DockerService(ILogger<DockerService> logger)
     {
         _logger = logger;

@@ -1,18 +1,14 @@
-﻿using AutoAPI.API.Services;
-using AutoAPI.API.Services.Generation;
-using AutoAPI.Core.Services;
+﻿using AutoAPI.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutoAPI.Orchestrator.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RebuildController(DockerService docker, ILogger<RebuildController> logger, IWebHostEnvironment env, ITemplateRenderer renderer) : ControllerBase
+    public class RebuildController(DockerService docker, ILogger<RebuildController> logger) : ControllerBase
     {
         private readonly DockerService _docker = docker;
         private readonly ILogger<RebuildController> _logger = logger;
-        private readonly IWebHostEnvironment _env = env;
-        private readonly ITemplateRenderer _renderer = renderer;
 
         [HttpPost("api")]
         public async Task<IActionResult> RebuildApi()
@@ -24,20 +20,18 @@ namespace AutoAPI.Orchestrator.Controllers
             const string apiContainer = "autoapi-api";
             const string composeFilePath = "/src/docker-compose.yml";
 
-            // 0️⃣ Context’i yeniden oluştur
-            try
-            {
-                _logger.LogInformation("🔁 AppDbContext yeniden oluşturuluyor...");
+            // 0️⃣ AppDbContext regeneration (builder konteynerinde)
+            var regenerateCmd =
+                $"docker exec {builderContainer} sh -c \"cd /src/AutoAPI.Builder && dotnet run --project AutoAPI.Builder.csproj -- regenerate-context\"";
 
-                var dbContextGenerator = new AppDbContextGeneratorService(_renderer, _env.ContentRootPath);
-                await dbContextGenerator.GenerateAppDbContextAsync([]);
+            _logger.LogInformation("🔁 AppDbContext regeneration başlatılıyor...");
+            var regenerate = await _docker.RunCommandAsync(regenerateCmd);
+            steps.Add(new { step = "AppDbContext regeneration", regenerate.exitCode, regenerate.output, regenerate.error });
 
-                steps.Add(new { step = "AppDbContext regenerated", status = "ok" });
-            }
-            catch (Exception ex)
+            if (regenerate.exitCode != 0)
             {
-                _logger.LogError(ex, "❌ AppDbContext yeniden oluşturulamadı");
-                return StatusCode(500, new { message = "❌ AppDbContext regeneration failed.", error = ex.Message, steps });
+                _logger.LogError("❌ AppDbContext regeneration failed: {Error}", regenerate.error);
+                return StatusCode(500, new { message = "❌ AppDbContext regeneration failed.", steps });
             }
 
             // 1️⃣ Solution publish (builder konteyner içinde)
