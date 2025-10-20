@@ -61,23 +61,22 @@ namespace AutoAPI.Orchestrator.Controllers
             // 2️⃣ Migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
 
-            // DÜZELTME: Bash'e gönderilen komut içindeki tırnak işaretleri kaldırıldı.
-            // Bu, bash'in komutu daha doğru bir şekilde çalıştırmasını sağlar.
+            // DÜZELTME: Tanınmayan '--force' parametresi kaldırıldı.
             var migrationAdd = await RunCommand("ef-migrations-add",
                 $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} migrations add {migrationName} " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
                 "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj " +
-                "--output-dir Migrations --force"); // Tırnak yok
+                "--output-dir Migrations"); // --force KALDIRILDI
 
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
             // 3️⃣ Database update
-            // DÜZELTME: Tırnak işaretleri kaldırıldı.
+            // Tırnak işaretleri kaldırılmış haliyle doğru çalışması bekleniyor.
             var migrationUpdate = await RunCommand("ef-database-update",
                 $"docker exec -w /src/AutoAPI.Data autoapi-builder {EF_TOOL_PATH} database update " +
                 "--project /src/AutoAPI.Data/AutoAPI.Data.csproj " +
-                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj"); // Tırnak yok
+                "--startup-project /src/AutoAPI.API/AutoAPI.API.csproj");
 
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
