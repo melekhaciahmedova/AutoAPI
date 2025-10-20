@@ -32,15 +32,15 @@ namespace AutoAPI.Orchestrator.Controllers
             if (buildContext.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Context build failed.", steps });
 
-            // 1️⃣ Down
+            // 1️⃣ Down (stop)
             var down = await RunCommand("docker compose stop",
-    $"docker compose -f {composeFilePath} stop autoapi-api autoapi-builder");
+                $"docker compose -f {composeFilePath} stop autoapi-api autoapi-builder");
             if (down.exitCode != 0)
                 return StatusCode(500, new { message = "❌ docker-compose stop failed", steps });
 
             // 2️⃣ Build
             var build = await RunCommand("docker compose build",
-    $"docker compose -f {composeFilePath} build --no-cache autoapi-api autoapi-builder");
+                $"docker compose -f {composeFilePath} build --no-cache autoapi-api autoapi-builder");
             if (build.exitCode != 0)
                 return StatusCode(500, new { message = "❌ docker-compose build failed", steps });
 
@@ -50,8 +50,47 @@ namespace AutoAPI.Orchestrator.Controllers
             if (up.exitCode != 0)
                 return StatusCode(500, new { message = "❌ docker-compose up failed", steps });
 
+            // 4️⃣ AppDbContext doğrulama
+            _logger.LogInformation("🔍 AppDbContext doğrulaması başlatılıyor...");
+
+            var checkCmd = """
+docker exec autoapi-builder sh -c '
+cd /tmp &&
+dotnet new console -n Checker --force >/dev/null &&
+cd Checker &&
+cp -r /src/AutoAPI.API/bin/Release/net8.0/* . &&
+echo "#pragma warning disable
+using System;
+using System.Reflection;
+using System.Linq;
+class P {
+ static void Main(){
+  try {
+    var asm = Assembly.LoadFrom(\"/tmp/Checker/AutoAPI.Data.dll\");
+    var ctx = asm.GetTypes().Where(t => t?.FullName?.Contains(\"AppDbContext\") == true).ToList();
+    if (ctx.Any())
+      Console.WriteLine($\"✅ Found: {string.Join(\", \", ctx.Select(t => t.FullName))}\");
+    else
+      Console.WriteLine(\"❌ AppDbContext not found.\");
+  } catch (Exception ex) {
+    Console.WriteLine($\"❌ Exception: {ex.Message}\");
+  }
+ }
+}" > Program.cs &&
+dotnet run --no-restore
+'
+""";
+
+            var check = await RunCommand("AppDbContext verification", checkCmd);
+
+            _logger.LogInformation(check.output);
+
             _logger.LogInformation("✅ Rebuild-lite başarıyla tamamlandı.");
-            return Ok(new { message = "✅ Rebuild-lite completed successfully.", steps });
+            return Ok(new
+            {
+                message = "✅ Rebuild-lite completed successfully.",
+                steps
+            });
         }
     }
 }
