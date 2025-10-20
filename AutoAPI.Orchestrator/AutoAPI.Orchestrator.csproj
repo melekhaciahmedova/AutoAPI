@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AutoAPI.API\AutoAPI.API.csproj" />
     <ProjectReference Include="..\AutoAPI.Core\AutoAPI.Core.csproj" />
   </ItemGroup>
 
