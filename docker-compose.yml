@@ -12,7 +12,7 @@ services:
     working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
-      - /root/.nuget/packages:/root/.nuget/packages:ro
+      - /root/.nuget/packages:/root/.nuget/packages:rw
     networks:
       - autoapi-net
     restart: unless-stopped
