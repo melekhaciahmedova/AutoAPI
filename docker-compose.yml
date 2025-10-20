@@ -4,12 +4,11 @@ services:
   autoapi-builder:
     container_name: autoapi-builder
     build:
-      context: /src
-      dockerfile: AutoAPI.Builder/Dockerfile
+      context: .
+      dockerfile: ./AutoAPI.Builder/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - PATH=/root/.dotnet/tools:$PATH
-    working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
       - /root/.nuget/packages:/root/.nuget/packages:ro
@@ -20,13 +19,12 @@ services:
   autoapi-api:
     container_name: autoapi-api
     build:
-      context: /src
-      dockerfile: AutoAPI.API/Dockerfile
+      context: .
+      dockerfile: ./AutoAPI.API/Dockerfile
     ports:
       - "5222:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
     networks:
@@ -36,13 +34,12 @@ services:
   autoapi-orchestrator:
     container_name: autoapi-orchestrator
     build:
-      context: /src
-      dockerfile: AutoAPI.Orchestrator/Dockerfile
+      context: .
+      dockerfile: ./AutoAPI.Orchestrator/Dockerfile
     ports:
       - "5113:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    working_dir: /src
     volumes:
       - /home/sama/AutoAPI:/src:rw
       - /var/run/docker.sock:/var/run/docker.sock
