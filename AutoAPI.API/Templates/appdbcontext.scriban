@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace AutoAPI.Data.Infrastructure
 {
-    public partial class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+    public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
     {
         {{~ for e in entities ~}}
         public DbSet<{{ e.name }}> {{ e.name }}s { get; set; }
