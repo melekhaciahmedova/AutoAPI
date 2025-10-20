@@ -1,21 +1,19 @@
 ﻿FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# dotnet CLI config
+# Ortam değişkenleri
 ENV DOTNET_CLI_HOME=/root \
-    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
-    PATH="/root/.dotnet/tools:$PATH"
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+
+# PATH değişikliğini kalıcı hale getir
+RUN mkdir -p /root/.dotnet/tools \
+    && echo 'export PATH=$PATH:/root/.dotnet/tools' >> /root/.bashrc \
+    && echo 'export PATH=$PATH:/root/.dotnet/tools' >> /etc/profile
+
+# dotnet-ef global kurulum
+RUN dotnet tool install --global dotnet-ef --version 8.* \
+    && dotnet ef --version
 
 WORKDIR /src
 
-# GLOBAL dotnet-ef yükle (manifest değil!)
-RUN dotnet tool install --global dotnet-ef --version 8.* \
-    && echo "✅ dotnet-ef installed globally"
-
-# global tool dizinini sisteme sabitle
-ENV PATH="$PATH:/root/.dotnet/tools"
-
-# test et (build-time'da)
-RUN dotnet ef --version || echo "⚠ dotnet ef test failed, will check runtime"
-
-# container'ı aktif tut
-CMD ["bash", "-c", "echo '🛠 autoapi-builder ready with dotnet-ef (global tool)' && sleep infinity"]
+# Container'ın aktif kalması için
+CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (EF global tool fixed)' && sleep infinity"]
