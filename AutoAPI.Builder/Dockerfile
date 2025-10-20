@@ -2,15 +2,19 @@
 
 # Ortam değişkenleri
 ENV DOTNET_CLI_HOME=/root \
-    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
-    PATH="/root/.dotnet/tools:$PATH"
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
 # Çalışma dizini
 WORKDIR /src
 
-# dotnet-ef yükle (bash -lc ile PATH doğru olur)
-RUN bash -lc "dotnet tool install --global dotnet-ef --version 8.*" \
-    && bash -lc "dotnet ef --version"
+# EF global tool'u kur ve PATH'e ekle
+RUN dotnet tool install --global dotnet-ef --version 8.* && \
+    export PATH="$PATH:/root/.dotnet/tools" && \
+    echo 'export PATH=$PATH:/root/.dotnet/tools' >> /root/.bashrc && \
+    dotnet ef --version
 
-# Container başlatıldığında PATH’in yüklenmesi için bash -lc kullan
-CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (dotnet-ef global tool fixed)' && sleep infinity"]
+# PATH'i kalıcı hale getir
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# Container'ı açık tut
+CMD ["bash", "-lc", "echo '🛠 autoapi-builder ready (dotnet-ef fixed permanently)' && sleep infinity"]
