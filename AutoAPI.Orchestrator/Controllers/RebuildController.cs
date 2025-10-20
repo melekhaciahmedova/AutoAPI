@@ -30,7 +30,7 @@ namespace AutoAPI.Orchestrator.Controllers
             try
             {
                 _logger.LogInformation("🔁 AppDbContext builder konteynerinde oluşturuluyor...");
-                var generateCmd = "dotnet /src/AutoAPI.Builder.dll generate-context";
+                var generateCmd = "dotnet /src/out/AutoAPI.Builder.dll generate-context";
 
                 var generate = await _docker.RunCommandAsync(
                     $"docker exec {builderContainer} sh -c \"{generateCmd}\"");
