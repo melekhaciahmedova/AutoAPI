@@ -28,18 +28,64 @@ namespace AutoAPI.API.Controllers
             if (definition == null || string.IsNullOrWhiteSpace(definition.ClassName))
                 return BadRequest("Invalid class definition.");
 
-            _logger.LogInformation($"🧱 Generating entity: {definition.ClassName}");
+            var steps = new List<object>();
+            _logger.LogInformation($"🧱 Entity generation started: {definition.ClassName}");
 
-            var entityGenerator = new EntityGeneratorService(_renderer, _env.ContentRootPath);
-            await entityGenerator.GenerateEntitiesAsync([definition]);
+            try
+            {
+                // 1️⃣ Entity class oluşturma
+                _logger.LogInformation("📁 Step 1: Entity class generation started...");
+                var entityGenerator = new EntityGeneratorService(_renderer, _env.ContentRootPath);
+                await entityGenerator.GenerateEntitiesAsync([definition]);
+                _logger.LogInformation("✅ Entity class generated successfully.");
+                steps.Add(new { step = "Entity Generation", status = "success" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Entity generation failed.");
+                steps.Add(new { step = "Entity Generation", status = "failed", error = ex.Message });
+                return StatusCode(500, new { message = "❌ Entity generation failed.", steps });
+            }
 
-            var fluentGenerator = new FluentApiGeneratorService(_renderer, _env.ContentRootPath);
-            await fluentGenerator.GenerateFluentConfigurationsAsync([definition]);
+            try
+            {
+                // 2️⃣ Fluent API config oluşturma
+                _logger.LogInformation("⚙️ Step 2: Fluent configuration generation started...");
+                var fluentGenerator = new FluentApiGeneratorService(_renderer, _env.ContentRootPath);
+                await fluentGenerator.GenerateFluentConfigurationsAsync([definition]);
+                _logger.LogInformation("✅ Fluent configuration generated successfully.");
+                steps.Add(new { step = "Fluent Configuration", status = "success" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Fluent configuration generation failed.");
+                steps.Add(new { step = "Fluent Configuration", status = "failed", error = ex.Message });
+                return StatusCode(500, new { message = "❌ Fluent configuration generation failed.", steps });
+            }
 
-            var dbContextGenerator = new AppDbContextGeneratorService(_renderer, _env.ContentRootPath);
-            await dbContextGenerator.GenerateAppDbContextAsync([definition]);
+            try
+            {
+                // 3️⃣ AppDbContext güncelleme
+                _logger.LogInformation("🧩 Step 3: AppDbContext generation started...");
+                var dbContextGenerator = new AppDbContextGeneratorService(_renderer, _env.ContentRootPath);
+                await dbContextGenerator.GenerateAppDbContextAsync([definition]);
+                _logger.LogInformation("✅ AppDbContext updated successfully.");
+                steps.Add(new { step = "AppDbContext Generation", status = "success" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ AppDbContext generation failed.");
+                steps.Add(new { step = "AppDbContext Generation", status = "failed", error = ex.Message });
+                return StatusCode(500, new { message = "❌ AppDbContext generation failed.", steps });
+            }
 
-            return Ok($"{definition.ClassName} successfully generated!");
+            _logger.LogInformation($"🎯 Entity generation completed successfully for {definition.ClassName}");
+
+            return Ok(new
+            {
+                message = $"✅ {definition.ClassName} successfully generated!",
+                steps
+            });
         }
 
         [HttpGet("check")]
