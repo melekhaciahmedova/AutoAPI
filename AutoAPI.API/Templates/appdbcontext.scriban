@@ -1,6 +1,6 @@
-﻿using AutoAPI.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using AutoAPI.Domain.Entities;
 
 namespace AutoAPI.Data.Infrastructure
 {
@@ -18,7 +18,10 @@ namespace AutoAPI.Data.Infrastructure
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+            
+            modelBuilder.ApplyConfigurationsFromAssembly(
+                typeof(Customer).Assembly
+            );
         }
     }
 }
