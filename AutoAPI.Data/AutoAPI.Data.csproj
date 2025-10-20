@@ -9,7 +9,7 @@
 		<CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 
-		<!-- 🔒 Default item discovery kapalı -->
+		<!-- 🔒 Default item discovery kapalı olduğu için tüm derlenecek dosyaları manuel belirtmemiz gerekiyor -->
 		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 	</PropertyGroup>
 
@@ -18,7 +18,7 @@
 		<ProjectReference Include="..\AutoAPI.Domain\AutoAPI.Domain.csproj" />
 	</ItemGroup>
 
-	<!-- 📦 Paketler -->
+	<!-- 📦 EF Core paketleri -->
 	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.5" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.5">
@@ -34,13 +34,20 @@
 
 	<!-- 🧱 Derlenecek dosyalar -->
 	<ItemGroup>
+		<!-- Context + Configurations -->
 		<Compile Include="Infrastructure\**\*.cs" />
-		<!-- AppDbContext + Configurations -->
+
+		<!-- 🧩 Migration dosyaları da derlenmeli -->
+		<Compile Include="Migrations\**\*.cs" />
+
+		<!-- Opsiyonel: kök dizindeki yardımcı dosyalar -->
+		<Compile Include="*.cs" />
 	</ItemGroup>
 
-	<!-- 📂 Klasör yapısı (görsel olarak IDE’de görünsün) -->
+	<!-- 📂 Klasör yapısı (IDE görünümü için) -->
 	<ItemGroup>
 		<Folder Include="Infrastructure\" />
+		<Folder Include="Migrations\" />
 	</ItemGroup>
 
 </Project>
