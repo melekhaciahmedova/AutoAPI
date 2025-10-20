@@ -7,20 +7,18 @@ namespace AutoAPI.Orchestrator.Controllers
     [Route("api/[controller]")]
     public class OrchestratorController : ControllerBase
     {
-        private readonly string _composeFile = "/src/docker-compose.yml";
-        private const string EF_PATH_FIX_PREFIX = "sh -c \"PATH=/root/.dotnet/tools:$PATH ";
-        private const string EF_PATH_FIX_SUFFIX = "\"";
         private readonly ILogger<OrchestratorController> _logger;
+        private readonly string _composeFile = "/src/docker-compose.yml";
+        private const string EF_TOOL_PATH = "/src/tools/dotnet-ef"; // local binary yolu
+
+        public OrchestratorController(ILogger<OrchestratorController> logger)
+        {
+            _logger = logger;
+        }
 
         [HttpPost("trigger")]
         public async Task<IActionResult> TriggerMigration([FromQuery] string name = "AutoMigration")
         {
-            if (!System.IO.File.Exists(_composeFile))
-            {
-                _logger.LogError($"❌ docker-compose.yml not found at {_composeFile}");
-                return StatusCode(500, new { message = $"docker-compose.yml not found at {_composeFile}" });
-            }
-
             var steps = new List<object>();
 
             async Task<(int exitCode, string output, string error)> RunCommand(string stepName, string command)
@@ -50,47 +48,49 @@ namespace AutoAPI.Orchestrator.Controllers
                 else
                     _logger.LogError($"❌ [{stepName}] ExitCode={exitCode}");
 
-                _logger.LogWarning($"⚠️ [{stepName}] Error:\n{error}");
+                if (!string.IsNullOrWhiteSpace(error))
+                    _logger.LogWarning($"⚠️ [{stepName}] Error:\n{error}");
+
                 steps.Add(new { step = stepName, exitCode, output, error });
                 return (exitCode, output, error);
             }
 
-            // 1️⃣ Down / remove existing containers
+            // 1️⃣ Mevcut container'ları temizle
             await RunCommand("remove-api", "docker rm -f autoapi-api || true");
             await RunCommand("remove-builder", "docker rm -f autoapi-builder || true");
 
-            // 2️⃣ Build both projects (builder + api)
+            // 2️⃣ Builder ve API imajlarını yeniden oluştur
             var build = await RunCommand("build",
                 $"docker compose -f \"{_composeFile}\" build --no-cache autoapi-builder autoapi-api");
             if (build.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Build failed.", steps });
 
-            // 3️⃣ Start builder container
+            // 3️⃣ Builder'ı ayağa kaldır
             var upBuilder = await RunCommand("up-builder",
                 $"docker compose -f \"{_composeFile}\" up -d --no-deps autoapi-builder");
             if (upBuilder.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Builder start failed.", steps });
 
-            // 4️⃣ Create EF migration
+            // 4️⃣ EF Tool'u mevcut değilse yükle
+            var ensureEfTool = await RunCommand("ensure-ef-tool",
+                $"docker exec -w /src autoapi-builder bash -lc \"[ -f {EF_TOOL_PATH} ] || dotnet tool install --tool-path ./tools dotnet-ef --version 8.*\"");
+            if (ensureEfTool.exitCode != 0)
+                return StatusCode(500, new { message = "❌ EF tool install failed.", steps });
+
+            // 5️⃣ Yeni migration oluştur
             var migrationName = $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}";
             var migrationAdd = await RunCommand("ef-migrations-add",
-    $"docker exec -w /src autoapi-builder bash -lc " +
-    $"\"dotnet --project AutoAPI.Data/AutoAPI.Data.csproj ef migrations add {migrationName} --startup-project AutoAPI.API/AutoAPI.API.csproj --output-dir AutoAPI.Data/Migrations\"");
-
-
+                $"docker exec -w /src autoapi-builder bash -lc \"{EF_TOOL_PATH} migrations add {migrationName} --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj --output-dir AutoAPI.Data/Migrations\"");
             if (migrationAdd.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Migration add failed.", steps });
 
-            // 5️⃣ Apply migrations
+            // 6️⃣ Database update
             var migrationUpdate = await RunCommand("ef-database-update",
-    $"docker exec -w /src autoapi-builder bash -lc " +
-    $"\"dotnet --project AutoAPI.Data/AutoAPI.Data.csproj ef database update --startup-project AutoAPI.API/AutoAPI.API.csproj\"");
-
-
+                $"docker exec -w /src autoapi-builder bash -lc \"{EF_TOOL_PATH} database update --project AutoAPI.Data/AutoAPI.Data.csproj --startup-project AutoAPI.API/AutoAPI.API.csproj\"");
             if (migrationUpdate.exitCode != 0)
                 return StatusCode(500, new { message = "❌ Database update failed.", steps });
 
-            // 6️⃣ Start API container again
+            // 7️⃣ API container'ını yeniden başlat
             var upApi = await RunCommand("up-api",
                 $"docker compose -f \"{_composeFile}\" up -d --no-deps autoapi-api");
             if (upApi.exitCode != 0)
