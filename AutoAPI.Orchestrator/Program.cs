@@ -23,7 +23,10 @@ var app = builder.Build();
 // Swagger (Development ortamında aktif)
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    app.UseSwagger(c =>
+    {
+        c.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi2_0; // veya OpenApi3_0
+    });
     app.UseSwaggerUI();
 }
 
