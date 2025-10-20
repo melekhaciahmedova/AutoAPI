@@ -1,13 +1,11 @@
-﻿# -----------------------------------------
-# Build aşaması
-# -----------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY AutoAPI.sln ./
 COPY AutoAPI.Orchestrator/ AutoAPI.Orchestrator/
 COPY AutoAPI.Core/ AutoAPI.Core/
 COPY AutoAPI.Data/ AutoAPI.Data/
 COPY AutoAPI.Domain/ AutoAPI.Domain/
+COPY AutoAPI.API/ AutoAPI.API/
 RUN dotnet restore "AutoAPI.Orchestrator/AutoAPI.Orchestrator.csproj"
 RUN dotnet publish "AutoAPI.Orchestrator/AutoAPI.Orchestrator.csproj" -c Release -o /app/publish
 
