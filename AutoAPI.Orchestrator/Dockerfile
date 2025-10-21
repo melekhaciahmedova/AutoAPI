@@ -1,5 +1,7 @@
 ﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+
+#Containerə lazım olanlar kopyalanır
 COPY AutoAPI.sln ./
 COPY AutoAPI.Orchestrator/ AutoAPI.Orchestrator/
 COPY AutoAPI.Core/ AutoAPI.Core/

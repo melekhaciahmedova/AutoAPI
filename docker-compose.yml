@@ -15,7 +15,7 @@ services:
       - /root/.nuget/packages:/root/.nuget/packages:rw
     networks:
       - autoapi-net
-    restart: unless-stopped
+    restart: no
 
   autoapi-api:
     container_name: autoapi-api
