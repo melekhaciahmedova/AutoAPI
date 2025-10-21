@@ -65,7 +65,6 @@ public class DockerService
     /// <summary>
     /// Docker komutlarını çalıştırmak için ortak method.
     /// </summary>
-    // AutoAPI.Core/Services/DockerService.cs
 
     public async Task<(int exitCode, string output, string error)> RunCommandAsync(string command)
     {
